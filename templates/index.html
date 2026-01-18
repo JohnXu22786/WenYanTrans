@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文言文分析工具</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Noto+Serif+SC:wght@300;400;500;700&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body onload="init()">
+    <div id="main-container">
+        <h1>文言文分析工具</h1>
+
+        <div id="input-area">
+            <p>将文件拖放到此处，或直接在下方粘贴文本</p>
+            <input type="file" id="file-input" accept=".txt" style="display: none;">
+            <textarea id="text-input" placeholder="请粘贴您的文言文材料..."></textarea>
+
+            <div id="status-message" style="color: #d93025; margin-top: 5px;"></div>
+
+            <div id="api-status">🟢 就绪</div>
+            <div id="failed-status"></div>
+
+            <div class="button-group">
+                <button id="start-button">开始分析</button>
+                <button id="copy-markdown-btn" disabled>📋 复制Markdown</button>
+            </div>
+        </div>
+
+        <div id="loading-area" style="text-align: center;">
+            <p id="loading-text" style="display: none;"></p>
+            <div class="progress-container" id="progress-container">
+                <div id="progress-bar"></div>
+            </div>
+        </div>
+
+        <div id="output-area">
+            <h2>分析结果：</h2>
+            <div id="results-content"></div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
