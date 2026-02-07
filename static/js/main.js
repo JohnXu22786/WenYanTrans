@@ -80,21 +80,33 @@ async function checkBackendHealth() {
             method: 'GET',
             timeout: 5000
         });
-        
+
         const data = await response.json();
-        
+
         if (data.status === 'connected') {
             updateApiStatusUI('connected');
             console.log(`后端连接成功，模型: ${data.model || '未知'}`);
         } else {
-            updateApiStatusUI('error');
-            console.error(`后端连接问题: ${data.message || '未知错误'}`);
+            // Check if error is about API key configuration
+            if (data.message && data.message.includes('API key not configured')) {
+                updateApiStatusUI('api_key_missing');
+                console.error(`API key未配置: ${data.message}`);
+            } else {
+                updateApiStatusUI('error');
+                console.error(`后端连接问题: ${data.message || '未知错误'}`);
+            }
         }
     } catch (error) {
         updateApiStatusUI('error');
         console.error('后端连接失败:', error);
     }
 }
+
+function retryApiKeyCheck() {
+    updateApiStatusUI('connecting');
+    checkBackendHealth();
+}
+
 
 // -------------------------------------
 // 4. API状态管理
@@ -118,6 +130,18 @@ function updateApiStatusUI(state) {
             apiConnectedState = false;
             els.apiStatus.innerHTML = '❌ 连接失败: 无法连接到后端服务';
             els.apiStatus.style.color = '#d93025';
+            break;
+        case 'api_key_missing':
+            apiConnectedState = false;
+            els.apiStatus.innerHTML = '❌ API密钥未配置: 请设置环境变量 wenyantrans_openrouter_apikey 并重启应用 <button id="retry-api-key-btn" style="margin-left: 10px; padding: 3px 8px; background: #1a73e8; color: white; border: none; border-radius: 4px; cursor: pointer;">重试</button>';
+            els.apiStatus.style.color = '#d93025';
+            // Add event listener for retry button
+            setTimeout(() => {
+                const retryBtn = document.getElementById('retry-api-key-btn');
+                if (retryBtn) {
+                    retryBtn.addEventListener('click', retryApiKeyCheck);
+                }
+            }, 100);
             break;
     }
 }
