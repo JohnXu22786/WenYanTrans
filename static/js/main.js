@@ -56,8 +56,6 @@ function init() {
     previewSegments = [];
     analysisSegments = [];
     
-    // 检查后端连接状态
-    checkBackendHealth();
 }
 
 function bindEventListeners() {
@@ -71,30 +69,6 @@ function bindEventListeners() {
     els.textInput.addEventListener('input', handleTextInput);
 }
 
-// -------------------------------------
-// 3. 后端连接检查
-// -------------------------------------
-async function checkBackendHealth() {
-    try {
-        const response = await fetch(`${BACKEND_ENDPOINT}/health`, {
-            method: 'GET',
-            timeout: 5000
-        });
-        
-        const data = await response.json();
-        
-        if (data.status === 'connected') {
-            updateApiStatusUI('connected');
-            console.log(`后端连接成功，模型: ${data.model || '未知'}`);
-        } else {
-            updateApiStatusUI('error');
-            console.error(`后端连接问题: ${data.message || '未知错误'}`);
-        }
-    } catch (error) {
-        updateApiStatusUI('error');
-        console.error('后端连接失败:', error);
-    }
-}
 
 // -------------------------------------
 // 4. API状态管理
@@ -106,7 +80,7 @@ function updateApiStatusUI(state) {
             els.apiStatus.style.color = '#188038';
             break;
         case 'connecting':
-            els.apiStatus.innerHTML = '🟡 正在连接后端服务...';
+            els.apiStatus.innerHTML = '🟡 正在连接API服务...';
             els.apiStatus.style.color = '#f9ab00';
             break;
         case 'connected':

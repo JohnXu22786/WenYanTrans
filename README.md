@@ -87,15 +87,28 @@
 
 4. **Configure API key**
    ```bash
-   # Edit config.json with your OpenRouter API key
+   # Set environment variable for OpenRouter API key
    # Get a free API key from https://openrouter.ai
+   # On Windows (Command Prompt):
+   set wenyantrans_openrouter_apikey=your-api-key-here
+   # On Windows (PowerShell):
+   $env:wenyantrans_openrouter_apikey="your-api-key-here"
+   # On macOS/Linux:
+   export wenyantrans_openrouter_apikey=your-api-key-here
    ```
+   Note: The API key is now read from the environment variable `wenyantrans_openrouter_apikey` and should not be stored in config.json.
 
    ```json
    {
-     "openrouter_api_key": "your-api-key-here",
-     "model_name": "moonshotai/kimi-k2-thinking",
-     "api_endpoint": "https://openrouter.ai/api/v1/chat/completions"
+     "model_name": "deepseek/deepseek-v3.2",
+     "api_endpoint": "https://openrouter.ai/api/v1/chat/completions",
+     "provider": {
+       "order": ["atlas-cloud/fp8", "novita/fp8", "deepinfra/fp4"],
+       "allow_fallbacks": true
+     },
+     "reasoning": {
+       "enabled": true
+     }
    }
    ```
 
@@ -142,7 +155,6 @@ The tool follows a structured five-step analysis method:
 - **Preview Mode**: Review and edit text segments before analysis
 - **Concurrent Processing**: Automatic segmentation for long texts
 - **Markdown Export**: Copy formatted results for notes or documentation
-- **Health Monitoring**: Real-time API connection status
 
 ## ⚙️ Configuration
 
@@ -151,9 +163,15 @@ Create a `config.json` file in the project root:
 
 ```json
 {
-  "openrouter_api_key": "your-api-key-here",
-  "model_name": "moonshotai/kimi-k2-thinking",
-  "api_endpoint": "https://openrouter.ai/api/v1/chat/completions"
+  "model_name": "deepseek/deepseek-v3.2",
+  "api_endpoint": "https://openrouter.ai/api/v1/chat/completions",
+  "provider": {
+    "order": ["atlas-cloud/fp8", "novita/fp8", "deepinfra/fp4"],
+    "allow_fallbacks": true
+  },
+  "reasoning": {
+    "enabled": true
+  }
 }
 ```
 
