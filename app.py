@@ -25,13 +25,27 @@ try:
     with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
         config = json.load(f)
     logger.info("Configuration loaded successfully")
+
+    # Validate required config fields
+    required_fields = ['model_name', 'api_endpoint']
+    for field in required_fields:
+        if field not in config:
+            raise ValueError(f"Missing required field in config.json: {field}")
+
 except FileNotFoundError:
     logger.error(f"Configuration file {CONFIG_PATH} not found")
-    config = {
-        "openrouter_api_key": "",
-        "model_name": "moonshotai/kimi-k2-thinking",
-        "api_endpoint": "https://openrouter.ai/api/v1/chat/completions"
-    }
+    raise
+except json.JSONDecodeError as e:
+    logger.error(f"Invalid JSON in config.json: {e}")
+    raise
+except ValueError as e:
+    logger.error(str(e))
+    raise
+
+# Read API key from environment variable
+OPENROUTER_API_KEY = os.environ.get('wenyantrans_openrouter_apikey')
+if not OPENROUTER_API_KEY:
+    logger.warning("Environment variable wenyantrans_openrouter_apikey is not set. API calls will fail. Please set the environment variable and restart the backend.")
 
 # System prompt (same as original)
 SYSTEM_PROMPT = """你必须扮演一位极具耐心的"文言文侦探导师"，目标是用"考试实战法"教会初学者破译文言文长句。针对用户发送的每一段内容，严格按以下顺序执行：
@@ -74,37 +88,46 @@ def analyze_segment():
             return jsonify({"error": "Segment content cannot be empty"}), 400
 
         # Check API key
-        api_key = config.get('openrouter_api_key')
+        api_key = OPENROUTER_API_KEY
         if not api_key:
-            return jsonify({"error": "API key not configured"}), 500
+            return jsonify({"error": "API key not configured. Please set the wenyantrans_openrouter_apikey environment variable and restart the backend."}), 500
 
         # Prepare request to OpenRouter API
         headers = {
             'Authorization': f'Bearer {api_key}',
             'Content-Type': 'application/json',
-            'HTTP-Referer': 'https://wenyantrans.app',
+            'HTTP-Referer': 'https://github.com/JohnXu22786/WenYanTrans',
             'X-Title': 'WenYanTrans',
         }
 
         payload = {
-            "model": config.get('model_name', 'moonshotai/kimi-k2-thinking'),
+            "model": config['model_name'],
             "messages": [
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": segment}
-            ],
-            "provider": {
-                "order": ["deepinfra/fp4", "novita/bf16", "chutes/int4"],
-            }
+            ]
         }
+
+        # Add provider configuration if specified in config
+        provider_config = config.get('provider')
+        if provider_config is not None and provider_config is not False:
+            # Only add provider if it exists in config and is not false
+            payload["provider"] = provider_config
+
+        # Add reasoning configuration if specified in config
+        reasoning_config = config.get('reasoning')
+        if reasoning_config:
+            # Add reasoning configuration to payload
+            payload["reasoning"] = reasoning_config
 
         logger.info(f"Analyzing segment, length: {len(segment)} characters")
 
         # Send request
         response = requests.post(
-            config.get('api_endpoint', 'https://openrouter.ai/api/v1/chat/completions'),
+            config['api_endpoint'],
             headers=headers,
             json=payload,
-            timeout=60  # 60 seconds timeout
+            timeout=120  # 120 seconds timeout
         )
 
         # Process response
@@ -135,55 +158,10 @@ def analyze_segment():
         logger.error(f"Server internal error: {str(e)}")
         return jsonify({"error": f"Server internal error: {str(e)}"}), 500
 
-@app.route('/health')
-def health_check():
-    """Health check endpoint"""
-    api_key = config.get('openrouter_api_key')
-    if not api_key:
-        return jsonify({"status": "error", "message": "API key not configured"}), 500
-
-    # Simple API connection test
-    try:
-        headers = {
-            'Authorization': f'Bearer {api_key}',
-            'Content-Type': 'application/json',
-        }
-
-        # Send a minimal test request
-        test_payload = {
-            "model": config.get('model_name', 'moonshotai/kimi-k2-thinking'),
-            "messages": [{"role": "user", "content": "test"}],
-            "max_tokens": 5
-        }
-
-        response = requests.post(
-            config.get('api_endpoint', 'https://openrouter.ai/api/v1/chat/completions'),
-            headers=headers,
-            json=test_payload,
-            timeout=10
-        )
-
-        if response.status_code in [200, 401, 429]:  # 200 success, 401 key error, 429 rate limit
-            return jsonify({
-                "status": "connected",
-                "model": config.get('model_name'),
-                "api_status": response.status_code
-            }), 200 if response.status_code == 200 else 200
-        else:
-            return jsonify({
-                "status": "error",
-                "message": f"API response异常: {response.status_code}"
-            }), 200
-
-    except Exception as e:
-        return jsonify({
-            "status": "error",
-            "message": f"Connection test failed: {str(e)}"
-        }), 200
 
 if __name__ == '__main__':
     logger.info(f"Starting Flask Server for WenYanTrans...")
-    logger.info(f"Model: {config.get('model_name', 'moonshotai/kimi-k2-thinking')}")
+    logger.info(f"Model: {config['model_name']}")
     logger.info("Listening at: http://127.0.0.1:1201")
     logger.info("Please visit: http://localhost:1201")
     app.run(host='127.0.0.1', port=1201, debug=True)
