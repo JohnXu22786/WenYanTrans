@@ -225,7 +225,7 @@ button:disabled {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 8px;
+    margin-bottom: 0;
 }
 
 .segment-status {
@@ -279,4 +279,108 @@ button:disabled {
 
 .preview-mode #start-button:hover:not(:disabled) {
     background-color: #d17d00;
+}
+
+/* 可折叠段落样式 */
+.segment-title-bar {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    flex-grow: 1;
+    margin-right: 10px;
+    padding: 4px 0;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.segment-title-bar:hover {
+    background-color: rgba(0, 0, 0, 0.04);
+}
+
+@media (prefers-color-scheme: dark) {
+    .segment-title-bar:hover {
+        background-color: rgba(255, 255, 255, 0.08);
+    }
+}
+
+.segment-title-text {
+    flex-grow: 1;
+    font-weight: 700;
+    font-size: 1.25em;
+    color: var(--text-light);
+    line-height: 1.4;
+    max-height: 2.8em; /* 两行高度 */
+    overflow: hidden;
+    position: relative;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    text-overflow: ellipsis;
+}
+
+.segment-title-text::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 30%;
+    height: 1.4em;
+    background: linear-gradient(to right, transparent, var(--bg-light) 70%);
+    pointer-events: none;
+}
+
+@media (prefers-color-scheme: dark) {
+    .segment-title-text::after {
+        background: linear-gradient(to right, transparent, var(--bg-light) 70%);
+    }
+}
+
+.expand-icon {
+    margin-left: 8px;
+    font-size: 0.8em;
+    color: var(--text-disabled);
+    transition: transform 0.3s;
+    flex-shrink: 0;
+}
+
+.segment-content {
+    overflow: hidden;
+    transition: max-height 0.3s ease, opacity 0.3s ease;
+    opacity: 1;
+    max-height: 0;
+}
+
+.segment-content.collapsed {
+    max-height: 0;
+    opacity: 0;
+}
+
+.segment-content.expanded {
+    max-height: 5000px; /* 足够大的值以容纳内容 */
+    opacity: 1;
+    margin-top: 12px;
+}
+
+.segment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0; /* 移除原底部间距，由内容区域提供 */
+}
+
+/* 调整标题栏内元素间距 */
+.segment-header .segment-status {
+    margin-left: 0;
+    margin-right: 10px;
+}
+
+.segment-header .regenerate-btn {
+    margin-left: 0;
+}
+
+/* 确保内容区域内的文本正常换行 */
+.segment-content p {
+    white-space: pre-wrap;
+    word-break: break-word;
 }

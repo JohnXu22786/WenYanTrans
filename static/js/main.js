@@ -509,25 +509,43 @@ function formatResponse(response) {
 
 function renderResults() {
     els.results.innerHTML = '';
-    
+
     for (let displayIndex = 0; displayIndex < analysisSegments.length; displayIndex++) {
         const segmentInfo = analysisSegments[displayIndex];
         const originalIndex = segmentInfo.index;
         const r = resultsMap.get(originalIndex);
-        
+
         if (!r) continue;
-        
+
         const segmentNumber = displayIndex + 1;
-        
+
         const segmentDiv = document.createElement('div');
         segmentDiv.className = 'segment-container';
-        
+
         const headerDiv = document.createElement('div');
         headerDiv.className = 'segment-header';
-        const title = document.createElement('h3');
-        title.textContent = `第${segmentNumber}段：${r.original}`;
-        headerDiv.appendChild(title);
-        
+
+        // 创建可点击的标题栏
+        const titleBar = document.createElement('div');
+        titleBar.className = 'segment-title-bar';
+        titleBar.setAttribute('role', 'button');
+        titleBar.setAttribute('tabindex', '0');
+        titleBar.setAttribute('aria-expanded', 'false');
+
+        // 标题文本容器（支持多行截断）
+        const titleTextContainer = document.createElement('div');
+        titleTextContainer.className = 'segment-title-text';
+        titleTextContainer.textContent = `第${segmentNumber}段：${r.original}`;
+        titleBar.appendChild(titleTextContainer);
+
+        // 展开/收起图标
+        const expandIcon = document.createElement('span');
+        expandIcon.className = 'expand-icon';
+        expandIcon.textContent = '▶';
+        titleBar.appendChild(expandIcon);
+
+        headerDiv.appendChild(titleBar);
+
         const statusSpan = document.createElement('span');
         statusSpan.className = 'segment-status';
         if (r.status === 'success') {
@@ -541,27 +559,58 @@ function renderResults() {
             statusSpan.textContent = '重试中';
         }
         headerDiv.appendChild(statusSpan);
-        
+
         const regenerateBtn = document.createElement('button');
         regenerateBtn.className = 'regenerate-btn';
         regenerateBtn.setAttribute('data-index', originalIndex);
         regenerateBtn.textContent = '重新生成';
         headerDiv.appendChild(regenerateBtn);
-        
+
         segmentDiv.appendChild(headerDiv);
-        
+
+        // 内容区域（默认隐藏）
         const contentDiv = document.createElement('div');
+        contentDiv.className = 'segment-content collapsed';
         contentDiv.innerHTML = formatResponse(r.response);
         segmentDiv.appendChild(contentDiv);
-        
+
+        // 点击事件：展开/收起内容
+        titleBar.addEventListener('click', function() {
+            const isExpanded = this.getAttribute('aria-expanded') === 'true';
+            const content = this.closest('.segment-container').querySelector('.segment-content');
+            const icon = this.querySelector('.expand-icon');
+
+            if (isExpanded) {
+                // 收起
+                this.setAttribute('aria-expanded', 'false');
+                content.classList.add('collapsed');
+                content.classList.remove('expanded');
+                icon.textContent = '▶';
+            } else {
+                // 展开
+                this.setAttribute('aria-expanded', 'true');
+                content.classList.remove('collapsed');
+                content.classList.add('expanded');
+                icon.textContent = '▼';
+            }
+        });
+
+        // 支持键盘访问
+        titleBar.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                this.click();
+            }
+        });
+
         els.results.appendChild(segmentDiv);
-        
+
         if (displayIndex < analysisSegments.length - 1) {
             const hr = document.createElement('hr');
             els.results.appendChild(hr);
         }
     }
-    
+
     bindRegenerateButtons();
 }
 
