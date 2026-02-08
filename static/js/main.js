@@ -73,24 +73,36 @@ function bindEventListeners() {
 // -------------------------------------
 // 4. API状态管理
 // -------------------------------------
-function updateApiStatusUI(state) {
+function updateApiStatusUI(state, details) {
     switch(state) {
         case 'ready':
+            apiConnectedState = false;
             els.apiStatus.innerHTML = '🟢 就绪';
             els.apiStatus.style.color = '#188038';
             break;
         case 'connecting':
-            els.apiStatus.innerHTML = '🟡 正在连接API服务...';
+            els.apiStatus.innerHTML = '🟡 正在连接后端...';
             els.apiStatus.style.color = '#f9ab00';
             break;
-        case 'connected':
+        case 'analyzing':
             apiConnectedState = true;
-            els.apiStatus.innerHTML = '✅ 已连接到后端服务';
+            els.apiStatus.innerHTML = '🟡 正在分析段落...';
+            els.apiStatus.style.color = '#f9ab00';
+            break;
+        case 'finished':
+            apiConnectedState = true;
+            els.apiStatus.innerHTML = '✅ 分析完成';
             els.apiStatus.style.color = '#188038';
             break;
         case 'error':
-            apiConnectedState = false;
-            els.apiStatus.innerHTML = '❌ 连接失败: 无法连接到后端服务';
+            if (details) {
+                // 分析错误，连接可能正常
+                els.apiStatus.innerHTML = `❌ ${details}`;
+            } else {
+                // 连接错误
+                apiConnectedState = false;
+                els.apiStatus.innerHTML = '❌ 连接失败: 无法连接到后端服务';
+            }
             els.apiStatus.style.color = '#d93025';
             break;
     }
@@ -189,12 +201,17 @@ function is_content(line) {
 async function processItem(item) {
     activeWorkers++;
     let shouldIncrementProgress = false;
-    
+
     if (!apiConnectedState && activeWorkers === 1 && segmentsCompleted === 0) {
         updateApiStatusUI('connecting');
     }
 
     try {
+        // 发出请求后即认为连接已建立，更新状态为分析中
+        if (!apiConnectedState && activeWorkers === 1) {
+            updateApiStatusUI('analyzing');
+        }
+
         const response = await fetch(`${BACKEND_ENDPOINT}/analyze`, {
             method: 'POST',
             headers: {
@@ -208,14 +225,12 @@ async function processItem(item) {
         if (!response.ok) {
             throw new Error(`后端请求失败: ${response.status} ${response.statusText}`);
         }
-        
+
         const data = await response.json();
-        
+
         if (!data.success) {
             throw new Error(data.error || '未知错误');
         }
-        
-        if (!apiConnectedState) updateApiStatusUI('connected');
 
         resultsMap.set(item.index, { 
             original: item.segment, 
@@ -227,7 +242,18 @@ async function processItem(item) {
         shouldIncrementProgress = true;
     } catch (err) {
         console.error(`段落 ${item.index + 1} 分析失败:`, err);
-        
+
+        // 检测网络错误
+        const isNetworkError = err.message.includes('Failed to fetch') ||
+                              err.message.includes('NetworkError') ||
+                              err.message.includes('TypeError') ||
+                              err.message.includes('网络错误') ||
+                              err.message.includes('连接失败');
+
+        if (isNetworkError) {
+            apiConnectedState = false;
+        }
+
         const retryCount = retryMap.get(item.index) || 0;
         
         if (retryCount < MAX_RETRY_ATTEMPTS) {
@@ -260,7 +286,7 @@ async function processItem(item) {
             updateFailedStatus();
         } else {
             if (!apiConnectedState) updateApiStatusUI('error');
-            
+
             const errorMsg = err.message || '未知错误';
             resultsMap.set(item.index, { 
                 original: item.segment, 
@@ -333,30 +359,39 @@ function updateFailedStatus() {
 
 function finishAnalysis() {
     els.progressContainer.style.display = 'none';
-    
+
     const successfulCount = totalSegments - failedSegments.filter(f => !f.isRetrying).length;
-    
-    let completionMessage = '';
     const finalFailures = failedSegments.filter(f => !f.isRetrying);
-    
+
+    // 更新API状态显示
+    if (finalFailures.length === 0) {
+        updateApiStatusUI('finished');
+    } else {
+        const failedIndices = finalFailures.map(f => f.index + 1).sort((a, b) => a - b).join(',');
+        const errorDetails = `分析完成 (成功${successfulCount}/${totalSegments}段，第${failedIndices}段失败)`;
+        updateApiStatusUI('error', errorDetails);
+    }
+
+    let completionMessage = '';
+
     if (finalFailures.length === 0) {
         completionMessage = `✅ 成功分析 ${totalSegments}/${totalSegments} 段`;
     } else {
         const failedIndices = finalFailures.map(f => f.index + 1).sort((a, b) => a - b).join(',');
         completionMessage = `✅ 成功分析 ${successfulCount}/${totalSegments} 段，其中第${failedIndices}段失败`;
-        
+
         completionMessage += ':\n';
         const sortedFailures = [...finalFailures].sort((a, b) => a.index - b.index);
         sortedFailures.forEach(f => {
             completionMessage += `第${f.index + 1}段：${f.error || '未知错误'}\n`;
         });
     }
-    
+
     els.loadingText.textContent = completionMessage;
     els.loadingText.style.display = 'block';
     els.startBtn.disabled = false;
     els.copyMarkdownBtn.disabled = false;
-    
+
     renderResults();
     generateCurrentMarkdownContent();
 }
@@ -474,25 +509,43 @@ function formatResponse(response) {
 
 function renderResults() {
     els.results.innerHTML = '';
-    
+
     for (let displayIndex = 0; displayIndex < analysisSegments.length; displayIndex++) {
         const segmentInfo = analysisSegments[displayIndex];
         const originalIndex = segmentInfo.index;
         const r = resultsMap.get(originalIndex);
-        
+
         if (!r) continue;
-        
+
         const segmentNumber = displayIndex + 1;
-        
+
         const segmentDiv = document.createElement('div');
         segmentDiv.className = 'segment-container';
-        
+
         const headerDiv = document.createElement('div');
         headerDiv.className = 'segment-header';
-        const title = document.createElement('h3');
-        title.textContent = `第${segmentNumber}段：${r.original}`;
-        headerDiv.appendChild(title);
-        
+
+        // 创建可点击的标题栏
+        const titleBar = document.createElement('div');
+        titleBar.className = 'segment-title-bar';
+        titleBar.setAttribute('role', 'button');
+        titleBar.setAttribute('tabindex', '0');
+        titleBar.setAttribute('aria-expanded', 'false');
+
+        // 标题文本容器（支持多行截断）
+        const titleTextContainer = document.createElement('div');
+        titleTextContainer.className = 'segment-title-text';
+        titleTextContainer.textContent = `第${segmentNumber}段：${r.original}`;
+        titleBar.appendChild(titleTextContainer);
+
+        // 展开/收起图标
+        const expandIcon = document.createElement('span');
+        expandIcon.className = 'expand-icon';
+        expandIcon.textContent = '▶';
+        titleBar.appendChild(expandIcon);
+
+        headerDiv.appendChild(titleBar);
+
         const statusSpan = document.createElement('span');
         statusSpan.className = 'segment-status';
         if (r.status === 'success') {
@@ -506,27 +559,58 @@ function renderResults() {
             statusSpan.textContent = '重试中';
         }
         headerDiv.appendChild(statusSpan);
-        
+
         const regenerateBtn = document.createElement('button');
         regenerateBtn.className = 'regenerate-btn';
         regenerateBtn.setAttribute('data-index', originalIndex);
         regenerateBtn.textContent = '重新生成';
         headerDiv.appendChild(regenerateBtn);
-        
+
         segmentDiv.appendChild(headerDiv);
-        
+
+        // 内容区域（默认隐藏）
         const contentDiv = document.createElement('div');
+        contentDiv.className = 'segment-content collapsed';
         contentDiv.innerHTML = formatResponse(r.response);
         segmentDiv.appendChild(contentDiv);
-        
+
+        // 点击事件：展开/收起内容
+        titleBar.addEventListener('click', function() {
+            const isExpanded = this.getAttribute('aria-expanded') === 'true';
+            const content = this.closest('.segment-container').querySelector('.segment-content');
+            const icon = this.querySelector('.expand-icon');
+
+            if (isExpanded) {
+                // 收起
+                this.setAttribute('aria-expanded', 'false');
+                content.classList.add('collapsed');
+                content.classList.remove('expanded');
+                icon.textContent = '▶';
+            } else {
+                // 展开
+                this.setAttribute('aria-expanded', 'true');
+                content.classList.remove('collapsed');
+                content.classList.add('expanded');
+                icon.textContent = '▼';
+            }
+        });
+
+        // 支持键盘访问
+        titleBar.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                this.click();
+            }
+        });
+
         els.results.appendChild(segmentDiv);
-        
+
         if (displayIndex < analysisSegments.length - 1) {
             const hr = document.createElement('hr');
             els.results.appendChild(hr);
         }
     }
-    
+
     bindRegenerateButtons();
 }
 
