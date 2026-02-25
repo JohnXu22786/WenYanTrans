@@ -20,7 +20,9 @@ const els = {
     progressContainer: document.getElementById('progress-container'),
     statusMsg: document.getElementById('status-message'),
     apiStatus: document.getElementById('api-status'),
-    failedStatus: document.getElementById('failed-status')
+    failedStatus: document.getElementById('failed-status'),
+    uploadBtn: document.getElementById('upload-btn'),
+    pasteBtn: document.getElementById('paste-btn')
 };
 
 // 运行状态
@@ -64,9 +66,11 @@ function bindEventListeners() {
     els.inputArea.addEventListener('drop', handleDrop);
     els.inputArea.addEventListener('dragover', handleDragOver);
     els.inputArea.addEventListener('dragleave', handleDragLeave);
-    els.inputArea.addEventListener('click', handleInputAreaClick);
+    // els.inputArea.addEventListener('click', handleInputAreaClick); // 移除整个区域点击上传功能
     els.fileInput.addEventListener('change', handleFileInputChange);
     els.textInput.addEventListener('input', handleTextInput);
+    els.uploadBtn.addEventListener('click', handleUploadClick);
+    els.pasteBtn.addEventListener('click', handlePasteClick);
 }
 
 
@@ -694,12 +698,27 @@ function handleDragLeave() {
     els.inputArea.classList.remove('drag-over'); 
 }
 
-function handleInputAreaClick(e) { 
-    if(e.target === els.inputArea) els.fileInput.click(); 
+// function handleInputAreaClick(e) {
+//     if(e.target === els.inputArea) els.fileInput.click();
+// }
+
+function handleFileInputChange(e) {
+    if(e.target.files[0]) handleFile(e.target.files[0]);
 }
 
-function handleFileInputChange(e) { 
-    if(e.target.files[0]) handleFile(e.target.files[0]); 
+function handleUploadClick() {
+    els.fileInput.click();
+}
+
+async function handlePasteClick() {
+    try {
+        const text = await navigator.clipboard.readText();
+        els.textInput.value = text;
+        handleTextInput();
+    } catch (err) {
+        console.error('粘贴失败:', err);
+        alert('无法访问剪贴板，请确保已授予权限或手动粘贴');
+    }
 }
 
 // -------------------------------------
