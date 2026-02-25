@@ -71,6 +71,49 @@ h1 {
     background-color: rgba(26, 115, 232, 0.1);
 }
 
+.upload-paste-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+
+.upload-paste-row p {
+    margin: 0;
+    flex-grow: 1;
+    text-align: center;
+    color: var(--text-light);
+    font-size: 0.95em;
+}
+
+.text-btn {
+    background-color: transparent;
+    color: var(--primary-color);
+    border: 1px solid var(--border-light);
+    padding: 4px 12px;
+    border-radius: 14px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s;
+    font-size: 0.85em;
+    white-space: nowrap;
+}
+
+.text-btn:hover {
+    background-color: rgba(26, 115, 232, 0.1);
+    border-color: var(--primary-color);
+}
+
+.text-btn:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+.text-btn:active {
+    background-color: rgba(26, 115, 232, 0.2);
+}
+
 textarea {
     width: 100%;
     min-height: 150px;
@@ -301,6 +344,21 @@ button:disabled {
 @media (prefers-color-scheme: dark) {
     .segment-title-bar:hover {
         background-color: rgba(255, 255, 255, 0.08);
+    }
+    .text-btn {
+        color: #8ab4f8; /* 暗色模式下更亮的蓝色 */
+        border-color: var(--border-light);
+    }
+    .text-btn:hover {
+        background-color: rgba(138, 180, 248, 0.1);
+        border-color: #8ab4f8;
+    }
+    .text-btn:focus {
+        outline: 2px solid #8ab4f8;
+        outline-offset: 2px;
+    }
+    .text-btn:active {
+        background-color: rgba(138, 180, 248, 0.2);
     }
 }
 

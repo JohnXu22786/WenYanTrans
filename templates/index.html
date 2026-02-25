@@ -13,7 +13,11 @@
         <h1>文言文分析工具</h1>
 
         <div id="input-area">
-            <p>将文件拖放到此处，或直接在下方粘贴文本</p>
+            <div class="upload-paste-row">
+                <button id="upload-btn" class="text-btn">上传</button>
+                <p>将文件拖放到此处，或直接在下方粘贴文本</p>
+                <button id="paste-btn" class="text-btn">粘贴</button>
+            </div>
             <input type="file" id="file-input" accept=".txt" style="display: none;">
             <textarea id="text-input" placeholder="请粘贴您的文言文材料..."></textarea>
 
