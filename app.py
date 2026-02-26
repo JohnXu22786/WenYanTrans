@@ -108,17 +108,15 @@ def analyze_segment():
             ]
         }
 
-        # Add provider configuration if specified in config
-        provider_config = config.get('provider')
-        if provider_config is not None and provider_config is not False:
-            # Only add provider if it exists in config and is not false
-            payload["provider"] = provider_config
-
-        # Add reasoning configuration if specified in config
-        reasoning_config = config.get('reasoning')
-        if reasoning_config:
-            # Add reasoning configuration to payload
-            payload["reasoning"] = reasoning_config
+        # Add custom parameters if specified in config
+        custom_param = config.get('custom_param')
+        if custom_param and isinstance(custom_param, dict):
+            # Merge all custom parameters into payload (excluding model and messages which are already set)
+            for key, value in custom_param.items():
+                # Don't override model or messages
+                if key not in ['model', 'messages']:
+                    payload[key] = value
+        # Note: No backward compatibility - config must use custom_param for any additional parameters
 
         logger.info(f"Analyzing segment, length: {len(segment)} characters")
 

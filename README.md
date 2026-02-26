@@ -102,12 +102,14 @@
    {
      "model_name": "deepseek/deepseek-v3.2",
      "api_endpoint": "https://openrouter.ai/api/v1/chat/completions",
-     "provider": {
-       "order": ["atlas-cloud/fp8", "novita/fp8", "deepinfra/fp4"],
-       "allow_fallbacks": true
-     },
-     "reasoning": {
-       "enabled": true
+     "custom_param": {
+       "provider": {
+         "order": ["atlas-cloud/fp8", "novita/fp8", "deepinfra/fp4"],
+         "allow_fallbacks": true
+       },
+       "reasoning": {
+         "enabled": true
+       }
      }
    }
    ```
@@ -165,18 +167,55 @@ Create a `config.json` file in the project root:
 {
   "model_name": "deepseek/deepseek-v3.2",
   "api_endpoint": "https://openrouter.ai/api/v1/chat/completions",
-  "provider": {
-    "order": ["atlas-cloud/fp8", "novita/fp8", "deepinfra/fp4"],
-    "allow_fallbacks": true
-  },
-  "reasoning": {
-    "enabled": true
+  "custom_param": {
+    "provider": {
+      "order": ["atlas-cloud/fp8", "novita/fp8", "deepinfra/fp4"],
+      "allow_fallbacks": true
+    },
+    "reasoning": {
+      "enabled": true
+    }
   }
 }
 ```
 
+### Custom Parameter Support
+The `custom_param` field allows you to add any custom parameters to the API request payload. This replaces the previous separate `provider` and `reasoning` fields. You can include any valid OpenRouter API parameters in the `custom_param` object, such as:
+- `temperature`, `max_tokens`, `top_p`, etc.
+- `provider` configuration for fallback routing
+- `reasoning` settings for thinking models
+- Any other parameters supported by the OpenRouter API
+
+The contents of `custom_param` will be merged directly into the API request payload (excluding `model` and `messages` which are already set by the application).
+
+**Note**: All custom parameters must now be placed within the `custom_param` object. The previous separate `provider` and `reasoning` fields are no longer supported.
+
+#### Example: Adding custom parameters
+```json
+{
+  "model_name": "moonshotai/kimi-k2-thinking",
+  "api_endpoint": "https://openrouter.ai/api/v1/chat/completions",
+  "custom_param": {
+    "provider": {
+      "order": ["chutes/int4", "deepinfra/fp4"],
+      "allow_fallbacks": true
+    },
+    "reasoning": {
+      "enabled": true
+    },
+    "temperature": 0.7,
+    "max_tokens": 4000,
+    "top_p": 0.9,
+    "stream": false,
+    "stop": ["\n\n", "###"]
+  }
+}
+```
+
+In this example, all parameters inside `custom_param` will be included in the API request to OpenRouter.
+
 ### Customization Options
-- **Port**: Modify `app.py` line 188 to change server port (default: 1201)
+- **Port**: Modify `app.py` line 176 to change server port (default: 1201)
 - **Model**: Change `model_name` in `config.json` to use different AI models
 - **Concurrency**: Adjust `MAX_CONCURRENT_CALLS` in `static/js/main.js` line 4
 - **Retry Attempts**: Modify `MAX_RETRY_ATTEMPTS` in `static/js/main.js` line 5
