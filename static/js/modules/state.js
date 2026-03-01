@@ -23,7 +23,33 @@ const state = {
     analysisSegments: [],  // 存储 {index: 原始索引, segment: 文本}
 
     // 当前显示的markdown内容
-    currentMarkdownContent: ''
+    currentMarkdownContent: '',
+
+    // 合并功能扩展（最小化）
+    mergedGroups: new Map(),           // Map<groupId, {indices: [], segments: []}>
+    rootGroupIds: [],                  // 根组ID列表（显示顺序，包含段落索引和组ID）
+    paragraphToGroup: new Map(),       // Map<paragraphIndex, groupId>
+    nextGroupId: 100,                  // 下一个组ID（避免与段落索引冲突）
+
+    // 新增方法
+    initializeMergeState() {
+        // 初始化合并状态，在showPreview开始时调用
+        this.mergedGroups.clear();
+        this.rootGroupIds = this.previewSegments.map(seg => seg.index);
+        this.paragraphToGroup.clear();
+        this.previewSegments.forEach(seg => {
+            this.paragraphToGroup.set(seg.index, seg.index);
+        });
+        this.nextGroupId = 100;
+    },
+
+    resetMergeState() {
+        // 重置合并状态，在重新输入时调用
+        this.mergedGroups.clear();
+        this.rootGroupIds = [];
+        this.paragraphToGroup.clear();
+        this.nextGroupId = 100;
+    }
 };
 
 export default state;

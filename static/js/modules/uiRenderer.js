@@ -201,7 +201,16 @@ export function renderResults() {
         // 标题文本容器（支持多行截断）
         const titleTextContainer = document.createElement('div');
         titleTextContainer.className = 'segment-title-text';
-        titleTextContainer.textContent = `第${segmentNumber}段：${r.original}`;
+
+        let titleText;
+        if (segmentInfo.isMerged && segmentInfo.mergedIndices) {
+            // 显示合并的段落索引（如：第1、2、3段）
+            const mergedSegmentNumbers = segmentInfo.mergedIndices.map(idx => idx + 1).join('、');
+            titleText = `第${mergedSegmentNumbers}段`;
+        } else {
+            titleText = `第${segmentInfo.index + 1}段：${r.original}`;
+        }
+        titleTextContainer.textContent = titleText;
         titleBar.appendChild(titleTextContainer);
 
         // 展开/收起图标
@@ -237,7 +246,22 @@ export function renderResults() {
         // 内容区域（默认隐藏）
         const contentDiv = document.createElement('div');
         contentDiv.className = 'segment-content collapsed';
-        contentDiv.innerHTML = formatResponse(r.response);
+
+        if (segmentInfo.isMerged && segmentInfo.originalSegments) {
+            // 合并段落：显示各个原始段落，然后显示分析结果
+            let contentHTML = '';
+
+            // 显示各个原始段落作为二级标题（使用<h2>）
+            segmentInfo.originalSegments.forEach(seg => {
+                contentHTML += `<h2>${seg.text}</h2>`;
+            });
+
+            // 添加分析结果
+            contentHTML += formatResponse(r.response);
+            contentDiv.innerHTML = contentHTML;
+        } else {
+            contentDiv.innerHTML = formatResponse(r.response);
+        }
         segmentDiv.appendChild(contentDiv);
 
         // 点击事件：展开/收起内容
@@ -288,7 +312,22 @@ export function generateCurrentMarkdownContent() {
 
         if (!result) continue;
 
-        state.currentMarkdownContent += `## 第${displayIndex + 1}段：${result.original}\n\n`;
+        let headerText;
+        if (segmentInfo.isMerged && segmentInfo.mergedIndices) {
+            const mergedSegmentNumbers = segmentInfo.mergedIndices.map(idx => idx + 1).join('、');
+            headerText = `## 第${mergedSegmentNumbers}段`;
+        } else {
+            headerText = `## 第${segmentInfo.index + 1}段：${result.original}`;
+        }
+        state.currentMarkdownContent += headerText + '\n\n';
+
+        // 对于合并段落，先显示各个原始段落
+        if (segmentInfo.isMerged && segmentInfo.originalSegments) {
+            segmentInfo.originalSegments.forEach(seg => {
+                state.currentMarkdownContent += `## ${seg.text}\n\n`;
+            });
+        }
+
         state.currentMarkdownContent += result.response + '\n\n';
 
         if (displayIndex < state.analysisSegments.length - 1) {

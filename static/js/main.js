@@ -16,11 +16,52 @@ import {
     handleFile, handleDrop, handleDragOver, handleDragLeave,
     handleFileInputChange, handleUploadClick, handlePasteClick
 } from './modules/fileHandlers.js';
-import { showPreview, deleteSegment } from './modules/previewMode.js';
+import { showPreview, deleteSegment, getGroupData } from './modules/previewMode.js';
 
 // -------------------------------------
 // 全局函数定义
 // -------------------------------------
+
+function prepareMergedSegments() {
+    const segments = [];
+    let displayIndex = 0;
+
+    for (const groupId of state.rootGroupIds) {
+        // 检查组是否被删除
+        const group = getGroupData(groupId);
+        if (!group) continue;
+
+        // 检查组中是否有段落被删除
+        const hasDeleted = group.indices.some(idx => state.segmentsToRemove.has(idx));
+        if (hasDeleted) continue;
+
+        if (group.indices.length === 1) {
+            segments.push({
+                index: group.indices[0],
+                segment: group.segments[0].segment,
+                retryCount: 0,
+                isMerged: false
+            });
+        } else {
+            // 合并多个段落的内容
+            const mergedText = group.segments.map(seg => seg.segment).join('\n\n');
+            segments.push({
+                index: group.indices[0], // 使用第一个段落的索引作为标识
+                segment: mergedText,
+                retryCount: 0,
+                isMerged: true,
+                mergedIndices: group.indices,
+                originalSegments: group.segments.map(seg => ({
+                    index: seg.index,
+                    text: seg.segment
+                }))
+            });
+        }
+        displayIndex++;
+    }
+
+    return segments;
+}
 
 function startAnalysis() {
     const txt = els.textInput.value.trim();
@@ -39,8 +80,7 @@ function startAnalysis() {
 function beginRealAnalysis() {
     if (!state.originalTextForPreview) return;
 
-    const allSegments = splitText(state.originalTextForPreview);
-    const filteredSegments = allSegments.filter(item => !state.segmentsToRemove.has(item.index));
+    const filteredSegments = prepareMergedSegments();
 
     if (filteredSegments.length === 0) {
         alert('没有需要分析的段落，请先删除不再需要的段落');

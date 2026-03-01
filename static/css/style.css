@@ -442,3 +442,58 @@ button:disabled {
     white-space: pre-wrap;
     word-break: break-word;
 }
+
+/* 合并按钮样式 - 与regenerate-btn类似 */
+.merge-btn {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 4px 12px;
+    font-size: 0.85em;
+    margin-left: 10px;
+    border-radius: 12px;
+    cursor: pointer;
+}
+
+.merge-btn:hover:not(:disabled) {
+    background-color: #1557b0;
+}
+
+.merge-btn:disabled {
+    background-color: var(--btn-disabled);
+    color: var(--text-disabled);
+}
+
+/* 拆分按钮样式 - 使用警告色 */
+.split-btn {
+    background-color: var(--warning-color);
+    color: white;
+    border: none;
+    padding: 4px 12px;
+    font-size: 0.85em;
+    margin-left: 10px;
+    border-radius: 12px;
+    cursor: pointer;
+}
+
+.split-btn:hover:not(:disabled) {
+    background-color: #d17d00;
+}
+
+/* 合并组容器样式 */
+.merged-group-container {
+    border: 2px solid var(--primary-color);
+    border-radius: 8px;
+    padding: 12px;
+    background-color: rgba(26, 115, 232, 0.05);
+}
+
+/* 合并徽章 */
+.merged-badge {
+    font-size: 0.8em;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background-color: rgba(26, 115, 232, 0.1);
+    color: var(--primary-color);
+    margin-left: 10px;
+}
