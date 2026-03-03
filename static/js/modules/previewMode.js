@@ -50,6 +50,9 @@ export function showPreview(text) {
     els.startBtn.textContent = '✅ 确认并开始分析';
     document.body.classList.add('preview-mode');
     document.getElementById('output-area').style.display = 'block';
+    // 修改输出标题为切割结果
+    const outputTitle = document.getElementById('output-title');
+    if (outputTitle) outputTitle.textContent = '切割结果：';
 }
 
 

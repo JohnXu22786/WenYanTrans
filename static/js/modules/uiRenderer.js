@@ -65,10 +65,13 @@ export function resetUIForNewInput() {
     state.previewSegments = [];
     state.originalTextForPreview = '';
     state.analysisSegments = [];
-    els.startBtn.textContent = '开始分析';
+    els.startBtn.textContent = '切割段落';
     els.progressContainer.style.display = 'none';
     els.loadingText.style.display = 'none';
     document.body.classList.remove('preview-mode');
+    // 重置输出标题为切割结果
+    const outputTitle = document.getElementById('output-title');
+    if (outputTitle) outputTitle.textContent = '切割结果：';
 }
 
 // 进度管理
