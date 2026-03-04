@@ -83,9 +83,9 @@ function beginRealAnalysis() {
     const filteredSegments = prepareMergedSegments();
 
     if (filteredSegments.length === 0) {
-        alert('没有需要分析的段落，请先删除不再需要的段落');
+        alert('没有需要分析的段落，请保留至少一段');
         state.isPreviewMode = true;
-        els.startBtn.textContent = '切割段落';
+        els.startBtn.textContent = '开始';
         state.segmentsToRemove.clear();
         state.previewSegments = [];
         showPreview(state.originalTextForPreview);
@@ -115,7 +115,7 @@ function beginRealAnalysis() {
     runQueue();
 
     state.isPreviewMode = true;
-    els.startBtn.textContent = '切割段落';
+    els.startBtn.textContent = '开始';
     state.segmentsToRemove.clear();
     state.previewSegments = [];
     state.originalTextForPreview = '';
