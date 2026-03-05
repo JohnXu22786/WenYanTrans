@@ -20,7 +20,7 @@
         --primary-color: #4285f4; /* Google蓝色 */
         --btn-disabled: #2d2d2d;
         --text-disabled: #757575;
-        --warning-color: #ffa726; /* 橙色 */
+        --warning-color: #e69622; /* 橙色 */
         --success-color: #66bb6a; /* 绿色 */
         --delete-color: #ef5350; /* 红色 */
     }
@@ -36,7 +36,7 @@
     --primary-color: #4285f4; /* Google蓝色 */
     --btn-disabled: #2d2d2d;
     --text-disabled: #757575;
-    --warning-color: #ffa726; /* 橙色 */
+    --warning-color: #e69622; /* 橙色 */
     --success-color: #66bb6a; /* 绿色 */
     --delete-color: #ef5350; /* 红色 */
 }
