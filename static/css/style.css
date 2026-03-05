@@ -25,11 +25,6 @@
         --delete-color: #ef5350; /* 红色 */
     }
 
-    button:disabled,
-    .regenerate-btn:disabled {
-        color: #ffffff !important;
-        opacity: 0.7;
-    }
 }
 
 body {
@@ -61,7 +56,7 @@ h1 {
 #input-area {
     border: 2px dashed var(--border-light);
     border-radius: 12px;
-    padding: 20px;
+    padding: 25px;
     text-align: center;
     margin-bottom: 20px;
     background-color: var(--container-bg-light);
@@ -71,6 +66,11 @@ h1 {
 #input-area.drag-over {
     border-color: var(--primary-color);
     background-color: rgba(66, 133, 244, 0.1);
+}
+
+.preview-mode #input-area {
+    border-color: var(--warning-color);
+    border-style: solid;
 }
 
 .upload-paste-row {
@@ -118,9 +118,9 @@ h1 {
 
 textarea {
     width: 100%;
-    min-height: 150px;
+    min-height: 180px;
     margin-top: 10px;
-    padding: 10px;
+    padding: 15px;
     border: 1px solid var(--border-light);
     border-radius: 8px;
     background-color: var(--bg-light);
@@ -128,6 +128,14 @@ textarea {
     resize: vertical;
     box-sizing: border-box;
     font-family: inherit;
+    font-size: 1em;
+    line-height: 1.5;
+}
+
+textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
 }
 
 .button-group {
@@ -155,22 +163,41 @@ button {
 
 button:hover:not(:disabled) {
     filter: brightness(0.9);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    transform: translateY(-1px);
 }
 
 button:disabled {
-    background-color: var(--btn-disabled);
-    color: var(--text-disabled);
+    background-color: var(--btn-disabled) !important;
+    color: var(--text-disabled) !important;
     cursor: not-allowed;
     opacity: 0.8;
+    transform: none !important;
 }
 
 #copy-markdown-btn {
     background-color: var(--success-color);
+    min-width: 140px;
+    padding: 12px 32px;
+    border-radius: 24px;
 }
 
 #copy-markdown-btn:hover:not(:disabled) {
     filter: brightness(0.9);
+}
+
+#start-button {
+    background-color: var(--primary-color);
+    min-width: 140px;
+    padding: 12px 32px;
+    border-radius: 24px;
+}
+
+#start-button:hover:not(:disabled) {
+    filter: brightness(0.9);
+}
+
+#copy-markdown-btn.copied {
+    background-color: #188038;
 }
 
 #api-status {

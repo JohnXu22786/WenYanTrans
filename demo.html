@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>输入框及按钮状态演示</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Noto+Serif+SC:wght@300;400;500;700&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-light: #ffffff;
+            --text-light: #202124;
+            --container-bg-light: #f8f9fa;
+            --border-light: #dadce0;
+            --primary-color: #4285f4; /* Google蓝色 */
+            --btn-disabled: #f1f3f4;
+            --text-disabled: #80868b;
+            --warning-color: #f39c12; /* 橙色 */
+            --success-color: #27ae60; /* 绿色 */
+            --delete-color: #e74c3c; /* 红色 */
+        }
+
+        :root.dark-mode {
+            --bg-light: #121212;
+            --text-light: #e0e0e0;
+            --container-bg-light: #1e1e1e;
+            --border-light: #424242;
+            --primary-color: #4285f4; /* Google蓝色 */
+            --btn-disabled: #2d2d2d;
+            --text-disabled: #757575;
+            --warning-color: #ffa726; /* 橙色 */
+            --success-color: #66bb6a; /* 绿色 */
+            --delete-color: #ef5350; /* 红色 */
+        }
+
+        body {
+            font-family: 'Google Sans', 'Roboto', Arial, sans-serif;
+            margin: 0;
+            background-color: var(--bg-light);
+            color: var(--text-light);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            transition: background-color 0.3s, color 0.3s;
+            padding: 20px;
+        }
+
+        .main-container {
+            width: 100%;
+            max-width: 700px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: var(--text-light);
+        }
+
+        .theme-toggle-container {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .theme-toggle-btn {
+            background-color: var(--container-bg-light);
+            color: var(--text-light);
+            border: 1px solid var(--border-light);
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .theme-toggle-btn:hover {
+            background-color: var(--border-light);
+        }
+
+        /* 输入框区域 */
+        .input-area {
+            border: 2px dashed var(--border-light);
+            border-radius: 12px;
+            padding: 25px;
+            background-color: var(--container-bg-light);
+            transition: all 0.3s;
+        }
+
+        .input-area.preview-mode {
+            border-color: var(--warning-color);
+            border-style: solid;
+        }
+
+        .input-area p {
+            margin: 0 0 15px 0;
+            color: var(--text-light);
+            font-size: 1em;
+            text-align: center;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 180px;
+            padding: 15px;
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            background-color: var(--bg-light);
+            color: var(--text-light);
+            resize: vertical;
+            box-sizing: border-box;
+            font-family: inherit;
+            font-size: 1em;
+            line-height: 1.5;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+        }
+
+        /* API状态和失败状态 */
+        #api-status-demo, #failed-status-demo {
+            margin-top: 15px;
+            font-size: 0.9em;
+            font-weight: 500;
+            min-height: 1.2em;
+            text-align: center;
+        }
+
+        #api-status-demo {
+            color: #188038; /* 默认绿色 */
+        }
+
+        #failed-status-demo {
+            color: #d93025;
+        }
+
+        /* 按钮组 */
+        .button-group {
+            margin-top: 25px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        /* 按钮基础样式 */
+        .main-button {
+            border: none;
+            padding: 12px 32px;
+            border-radius: 24px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+            font-size: 1em;
+            min-width: 140px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .main-button:hover:not(:disabled) {
+            filter: brightness(0.9);
+            transform: translateY(-1px);
+        }
+
+        .main-button:disabled {
+            background-color: var(--btn-disabled) !important;
+            color: var(--text-disabled) !important;
+            cursor: not-allowed;
+            opacity: 0.8;
+            transform: none !important;
+        }
+
+        /* 开始按钮 */
+        #start-button-demo {
+            background-color: var(--primary-color);
+        }
+
+        .preview-mode #start-button-demo {
+            background-color: var(--warning-color);
+        }
+
+        /* 复制按钮 */
+        #copy-markdown-btn-demo {
+            background-color: var(--success-color);
+        }
+
+        #copy-markdown-btn-demo.copied {
+            background-color: #188038;
+        }
+
+        /* 状态控制面板 */
+        .control-panel {
+            margin-top: 40px;
+            padding: 25px;
+            border: 1px solid var(--border-light);
+            border-radius: 12px;
+            background-color: var(--container-bg-light);
+        }
+
+        .control-panel h3 {
+            margin-top: 0;
+            margin-bottom: 20px;
+            color: var(--text-light);
+            text-align: center;
+            font-size: 1.2em;
+        }
+
+        .control-group {
+            margin-bottom: 25px;
+        }
+
+        .control-group h4 {
+            margin: 0 0 12px 0;
+            color: var(--text-light);
+            font-size: 1em;
+            font-weight: 500;
+        }
+
+        .control-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .control-btn {
+            background-color: var(--container-bg-light);
+            color: var(--text-light);
+            border: 1px solid var(--border-light);
+            padding: 8px 16px;
+            border-radius: 16px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.2s;
+        }
+
+        .control-btn:hover {
+            background-color: var(--border-light);
+        }
+
+        .current-state {
+            margin-top: 30px;
+            padding: 15px;
+            background-color: var(--bg-light);
+            border-radius: 8px;
+            border: 1px solid var(--border-light);
+        }
+
+        .current-state h4 {
+            margin: 0 0 10px 0;
+            color: var(--text-light);
+            font-size: 1em;
+            font-weight: 500;
+        }
+
+        .state-info {
+            color: var(--text-light);
+            font-size: 0.9em;
+            line-height: 1.5;
+        }
+
+        .color-sample {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <h1>输入框及按钮状态演示</h1>
+
+        <div class="theme-toggle-container">
+            <button id="theme-toggle-btn" class="theme-toggle-btn">切换到深色模式</button>
+        </div>
+
+        <!-- 主输入框区域 -->
+        <div class="input-area" id="input-area-demo">
+            <p>将文件拖放到此处，或直接在下方粘贴文本</p>
+            <textarea id="text-input-demo" placeholder="请粘贴您的文言文材料...">孟子曰："天将降大任于是人也，必先苦其心志，劳其筋骨，饿其体肤，空乏其身，行拂乱其所为，所以动心忍性，曾益其所不能。"
+
+人恒过，然后能改；困于心，衡于虑，而后作；征于色，发于声，而后喻。</textarea>
+
+            <div id="api-status-demo">🟢 就绪</div>
+            <div id="failed-status-demo"></div>
+
+            <div class="button-group">
+                <button id="start-button-demo" class="main-button">开始</button>
+                <button id="copy-markdown-btn-demo" class="main-button" disabled>📋 复制Markdown</button>
+            </div>
+        </div>
+
+        <!-- 控制面板 -->
+        <div class="control-panel">
+            <h3>状态控制</h3>
+
+            <div class="control-group">
+                <h4>API状态</h4>
+                <div class="control-buttons">
+                    <button class="control-btn" onclick="changeApiStatus('ready')">🟢 就绪</button>
+                    <button class="control-btn" onclick="changeApiStatus('connecting')">🟡 连接中</button>
+                    <button class="control-btn" onclick="changeApiStatus('analyzing')">🟡 分析中</button>
+                    <button class="control-btn" onclick="changeApiStatus('finished')">✅ 完成</button>
+                    <button class="control-btn" onclick="changeApiStatus('error')">❌ 错误</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h4>开始按钮状态</h4>
+                <div class="control-buttons">
+                    <button class="control-btn" onclick="setStartButtonState('normal')">正常 (蓝色)</button>
+                    <button class="control-btn" onclick="setStartButtonState('preview')">预览模式 (橙色)</button>
+                    <button class="control-btn" onclick="setStartButtonState('disabled')">禁用</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h4>复制按钮状态</h4>
+                <div class="control-buttons">
+                    <button class="control-btn" onclick="setCopyButtonState('normal')">正常 (绿色)</button>
+                    <button class="control-btn" onclick="setCopyButtonState('copied')">已复制 (深绿)</button>
+                    <button class="control-btn" onclick="setCopyButtonState('disabled')">禁用</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h4>失败状态</h4>
+                <div class="control-buttons">
+                    <button class="control-btn" onclick="showFailedStatus('single')">单一段落失败</button>
+                    <button class="control-btn" onclick="showFailedStatus('multiple')">多个段落失败</button>
+                    <button class="control-btn" onclick="clearFailedStatus()">清除失败状态</button>
+                </div>
+            </div>
+
+            <div class="current-state">
+                <h4>当前状态说明</h4>
+                <div class="state-info">
+                    <p><span class="color-sample" style="background-color: var(--primary-color)"></span> 开始按钮：正常状态为蓝色，预览模式为橙色</p>
+                    <p><span class="color-sample" style="background-color: var(--success-color)"></span> 复制按钮：正常状态为绿色，已复制为深绿色</p>
+                    <p><span class="color-sample" style="background-color: var(--btn-disabled)"></span> 禁用状态：两个按钮禁用时均为灰色</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 主题切换功能
+        const themeToggleBtn = document.getElementById('theme-toggle-btn');
+        const rootElement = document.documentElement;
+
+        function checkTheme() {
+            const isDarkMode = rootElement.classList.contains('dark-mode');
+            themeToggleBtn.textContent = isDarkMode ? '切换到浅色模式' : '切换到深色模式';
+        }
+
+        themeToggleBtn.addEventListener('click', function() {
+            rootElement.classList.toggle('dark-mode');
+            checkTheme();
+            this.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                this.style.transform = 'scale(1)';
+            }, 150);
+        });
+
+        checkTheme();
+
+        // API状态切换函数
+        function changeApiStatus(status) {
+            const apiStatus = document.getElementById('api-status-demo');
+            switch(status) {
+                case 'ready':
+                    apiStatus.innerHTML = '🟢 就绪';
+                    apiStatus.style.color = '#188038';
+                    break;
+                case 'connecting':
+                    apiStatus.innerHTML = '🟡 正在连接后端...';
+                    apiStatus.style.color = '#f9ab00';
+                    break;
+                case 'analyzing':
+                    apiStatus.innerHTML = '🟡 正在分析段落...';
+                    apiStatus.style.color = '#f9ab00';
+                    break;
+                case 'finished':
+                    apiStatus.innerHTML = '✅ 分析完成';
+                    apiStatus.style.color = '#188038';
+                    break;
+                case 'error':
+                    apiStatus.innerHTML = '❌ 连接失败: 无法连接到后端服务';
+                    apiStatus.style.color = '#d93025';
+                    break;
+            }
+        }
+
+        // 开始按钮状态设置
+        function setStartButtonState(state) {
+            const startBtn = document.getElementById('start-button-demo');
+            const inputArea = document.getElementById('input-area-demo');
+
+            switch(state) {
+                case 'normal':
+                    startBtn.disabled = false;
+                    startBtn.textContent = '开始';
+                    inputArea.classList.remove('preview-mode');
+                    break;
+                case 'preview':
+                    startBtn.disabled = false;
+                    startBtn.textContent = '✅ 确认并开始分析';
+                    inputArea.classList.add('preview-mode');
+                    break;
+                case 'disabled':
+                    startBtn.disabled = true;
+                    startBtn.textContent = '开始';
+                    inputArea.classList.remove('preview-mode');
+                    break;
+            }
+        }
+
+        // 复制按钮状态设置
+        function setCopyButtonState(state) {
+            const copyBtn = document.getElementById('copy-markdown-btn-demo');
+
+            switch(state) {
+                case 'normal':
+                    copyBtn.disabled = false;
+                    copyBtn.textContent = '📋 复制Markdown';
+                    copyBtn.classList.remove('copied');
+                    break;
+                case 'copied':
+                    copyBtn.disabled = false;
+                    copyBtn.textContent = '✅ 已复制';
+                    copyBtn.classList.add('copied');
+                    break;
+                case 'disabled':
+                    copyBtn.disabled = true;
+                    copyBtn.textContent = '📋 复制Markdown';
+                    copyBtn.classList.remove('copied');
+                    break;
+            }
+        }
+
+        // 失败状态显示
+        function showFailedStatus(type) {
+            const failedStatus = document.getElementById('failed-status-demo');
+
+            if (type === 'single') {
+                failedStatus.textContent = '❌ 失败段落: 第3段 (错误: 网络超时)';
+            } else if (type === 'multiple') {
+                failedStatus.textContent = '❌ 失败段落: 第3段, 第5段 (错误: 网络超时)';
+            }
+            failedStatus.style.display = 'block';
+        }
+
+        // 清除失败状态
+        function clearFailedStatus() {
+            const failedStatus = document.getElementById('failed-status-demo');
+            failedStatus.textContent = '';
+            failedStatus.style.display = 'none';
+        }
+    </script>
+</body>
+</html>
