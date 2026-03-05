@@ -43,5 +43,6 @@ export const els = {
     apiStatus: null,
     failedStatus: null,
     uploadBtn: null,
-    pasteBtn: null
+    pasteBtn: null,
+    themeToggleBtn: null
 };

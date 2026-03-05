@@ -17,6 +17,7 @@ import {
     handleFileInputChange, handleUploadClick, handlePasteClick
 } from './modules/fileHandlers.js';
 import { showPreview, deleteSegment, getGroupData } from './modules/previewMode.js';
+import { initTheme } from './modules/theme.js';
 
 // -------------------------------------
 // 全局函数定义
@@ -163,8 +164,10 @@ function init() {
     els.failedStatus = document.getElementById('failed-status');
     els.uploadBtn = document.getElementById('upload-btn');
     els.pasteBtn = document.getElementById('paste-btn');
+    els.themeToggleBtn = document.getElementById('theme-toggle-btn');
 
     updateApiStatusUI('ready');
+    initTheme();
     bindEventListeners();
     state.isPreviewMode = true;
     state.segmentsToRemove.clear();
