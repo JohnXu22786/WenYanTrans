@@ -10,6 +10,9 @@
 </head>
 <body onload="init()">
     <div id="main-container">
+        <div id="theme-toggle-container">
+            <button id="theme-toggle-btn" aria-label="切换深浅色主题">🌙</button>
+        </div>
         <h1>文言文分析工具</h1>
 
         <div id="input-area">
@@ -27,7 +30,7 @@
             <div id="failed-status"></div>
 
             <div class="button-group">
-                <button id="start-button">开始分析</button>
+                <button id="start-button">开始</button>
                 <button id="copy-markdown-btn" disabled>📋 复制Markdown</button>
             </div>
         </div>
@@ -40,7 +43,7 @@
         </div>
 
         <div id="output-area">
-            <h2>分析结果：</h2>
+            <h2 id="output-title">切割结果：</h2>
             <div id="results-content"></div>
         </div>
     </div>

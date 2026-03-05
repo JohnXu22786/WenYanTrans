@@ -17,6 +17,7 @@ import {
     handleFileInputChange, handleUploadClick, handlePasteClick
 } from './modules/fileHandlers.js';
 import { showPreview, deleteSegment, getGroupData } from './modules/previewMode.js';
+import { initTheme } from './modules/theme.js';
 
 // -------------------------------------
 // 全局函数定义
@@ -83,9 +84,9 @@ function beginRealAnalysis() {
     const filteredSegments = prepareMergedSegments();
 
     if (filteredSegments.length === 0) {
-        alert('没有需要分析的段落，请先删除不再需要的段落');
+        alert('没有需要分析的段落，请保留至少一段');
         state.isPreviewMode = true;
-        els.startBtn.textContent = '开始分析';
+        els.startBtn.textContent = '开始';
         state.segmentsToRemove.clear();
         state.previewSegments = [];
         showPreview(state.originalTextForPreview);
@@ -93,6 +94,10 @@ function beginRealAnalysis() {
     }
 
     resetUIForNewInput();
+
+    // 修改输出标题为分析结果
+    const outputTitle = document.getElementById('output-title');
+    if (outputTitle) outputTitle.textContent = '分析结果：';
 
     state.analysisSegments = filteredSegments;
     state.segmentQueue = [...filteredSegments];
@@ -111,7 +116,7 @@ function beginRealAnalysis() {
     runQueue();
 
     state.isPreviewMode = true;
-    els.startBtn.textContent = '开始分析';
+    els.startBtn.textContent = '开始';
     state.segmentsToRemove.clear();
     state.previewSegments = [];
     state.originalTextForPreview = '';
@@ -159,8 +164,10 @@ function init() {
     els.failedStatus = document.getElementById('failed-status');
     els.uploadBtn = document.getElementById('upload-btn');
     els.pasteBtn = document.getElementById('paste-btn');
+    els.themeToggleBtn = document.getElementById('theme-toggle-btn');
 
     updateApiStatusUI('ready');
+    initTheme();
     bindEventListeners();
     state.isPreviewMode = true;
     state.segmentsToRemove.clear();

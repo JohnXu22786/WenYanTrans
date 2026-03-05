@@ -50,6 +50,9 @@ export function showPreview(text) {
     els.startBtn.textContent = '✅ 确认并开始分析';
     document.body.classList.add('preview-mode');
     document.getElementById('output-area').style.display = 'block';
+    // 修改输出标题为切割结果
+    const outputTitle = document.getElementById('output-title');
+    if (outputTitle) outputTitle.textContent = '切割结果：';
 }
 
 
@@ -74,6 +77,14 @@ function mergeAdjacentGroups(groupId1, groupId2) {
 
     if (!group1 || !group2) {
         console.error('无法找到组数据');
+        return null;
+    }
+
+    // 检查两个组中是否有段落被删除
+    const hasDeleted1 = group1.indices.some(idx => state.segmentsToRemove.has(idx));
+    const hasDeleted2 = group2.indices.some(idx => state.segmentsToRemove.has(idx));
+    if (hasDeleted1 || hasDeleted2) {
+        console.error('无法合并包含已删除段落的组');
         return null;
     }
 
@@ -286,13 +297,27 @@ function handleSplitClick(groupId) {
 
 // 修改deleteSegment函数，支持删除合并组
 export function deleteSegment(originalIndex, divElement) {
+    // 调试信息
+    console.log('尝试删除段落:', {
+        originalIndex,
+        groupId: state.paragraphToGroup.get(originalIndex)
+    });
+
     // 获取组ID
     const groupId = state.paragraphToGroup.get(originalIndex);
-    if (!groupId) return;
+    if (groupId === undefined || groupId === null) {
+        console.error('找不到段落组ID:', originalIndex);
+        alert(`无法删除段落：找不到段落数据（索引: ${originalIndex + 1}）`);
+        return;
+    }
 
     // 获取组数据
     const group = getGroupData(groupId);
-    if (!group) return;
+    if (!group) {
+        console.error('找不到组数据:', groupId);
+        alert(`无法删除段落：找不到段落组（ID: ${groupId}）`);
+        return;
+    }
 
     // 标记组中所有段落为删除
     group.indices.forEach(idx => {
