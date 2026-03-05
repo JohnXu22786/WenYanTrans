@@ -5,7 +5,7 @@
 // 导入配置与常量
 import { MAX_CONCURRENT_CALLS, MAX_RETRY_ATTEMPTS, BACKEND_ENDPOINT, SYSTEM_PROMPT, els } from './modules/config.js';
 import state from './modules/state.js';
-import { splitText, is_content } from './modules/textProcessor.js';
+import { splitText } from './modules/textProcessor.js';
 import { processItem, runQueue, regenerateSegment } from './modules/apiClient.js';
 import {
     handleTextInput, resetUIForNewInput, updateProgress, updateFailedStatus,
