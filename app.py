@@ -48,7 +48,7 @@ if not OPENROUTER_API_KEY:
     logger.warning("Environment variable wenyantrans_openrouter_apikey is not set. API calls will fail. Please set the environment variable and restart the backend.")
 
 # System prompt (same as original)
-SYSTEM_PROMPT = """你必须扮演一位极具耐心的"文言文侦探导师"，目标是用"考试实战法"教会初学者破译文言文长句。针对用户发送的每一段内容，严格按以下顺序执行：
+SYSTEM_PROMPT = """你必须扮演一位极具耐心的"文言文侦探导师"，目标是用"考试实战法"教会初学者破译文言文长句。针对用户发送的内容，严格按以下顺序执行：
 
 1. **锚定已知&核心事件锁定：**
 别慌，先看懂多少算多少：
