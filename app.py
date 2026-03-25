@@ -23,14 +23,56 @@ CORS(app)  # Enable CORS for all routes
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'config.json')
 try:
     with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
-        config = json.load(f)
+        config_data = json.load(f)
     logger.info("Configuration loaded successfully")
 
-    # Validate required config fields
+    # Normalize configuration structure for backward compatibility
+    # If config has old flat structure, convert to new multi-preset structure
+    if 'presets' not in config_data:
+        # Old format detected - convert to new format
+        logger.info("Old config format detected, converting to multi-preset format")
+        config_data = {
+            'active_preset': 'default',
+            'presets': {
+                'default': {
+                    'model_name': config_data.get('model_name'),
+                    'api_endpoint': config_data.get('api_endpoint'),
+                    'custom_param': config_data.get('custom_param', {})
+                }
+            }
+        }
+        # Validate that required fields exist in the converted config
+        if not config_data['presets']['default']['model_name']:
+            raise ValueError("Missing required field in config.json: model_name")
+        if not config_data['presets']['default']['api_endpoint']:
+            raise ValueError("Missing required field in config.json: api_endpoint")
+
+    # Validate new config structure
+    if 'active_preset' not in config_data:
+        raise ValueError("Missing required field in config.json: active_preset")
+    if 'presets' not in config_data:
+        raise ValueError("Missing required field in config.json: presets")
+
+    active_preset = config_data['active_preset']
+    if active_preset not in config_data['presets']:
+        raise ValueError(f"Active preset '{active_preset}' not found in presets")
+
+    preset_config = config_data['presets'][active_preset]
+
+    # Validate required fields in selected preset
     required_fields = ['model_name', 'api_endpoint']
     for field in required_fields:
-        if field not in config:
-            raise ValueError(f"Missing required field in config.json: {field}")
+        if field not in preset_config:
+            raise ValueError(f"Missing required field in preset '{active_preset}': {field}")
+
+    # Create normalized config object for backward compatibility
+    config = {
+        'model_name': preset_config['model_name'],
+        'api_endpoint': preset_config['api_endpoint'],
+        'custom_param': preset_config.get('custom_param', {}),
+        '_raw_config': config_data,  # Keep full config for reference
+        '_active_preset': active_preset
+    }
 
 except FileNotFoundError:
     logger.error(f"Configuration file {CONFIG_PATH} not found")
@@ -42,10 +84,45 @@ except ValueError as e:
     logger.error(str(e))
     raise
 
-# Read API key from environment variable
-OPENROUTER_API_KEY = os.environ.get('wenyantrans_openrouter_apikey')
-if not OPENROUTER_API_KEY:
-    logger.warning("Environment variable wenyantrans_openrouter_apikey is not set. API calls will fail. Please set the environment variable and restart the backend.")
+# API key management - read from system data folder
+def get_data_dir():
+    """Get platform-specific data directory for WenYanTrans"""
+    home = os.path.expanduser("~")
+
+    # Platform-specific data directories
+    if os.name == 'nt':  # Windows
+        data_dir = os.path.join(os.environ.get('APPDATA', home), 'WenYanTrans')
+    elif os.name == 'posix':  # Linux/macOS
+        data_dir = os.path.join(home, '.wenyantrans')
+    else:
+        data_dir = os.path.join(home, '.wenyantrans')
+
+    # Create directory if it doesn't exist
+    os.makedirs(data_dir, exist_ok=True)
+    return data_dir
+
+def load_api_keys():
+    """Load API keys from data directory"""
+    data_dir = get_data_dir()
+    api_keys_file = os.path.join(data_dir, 'api_keys.json')
+
+    if not os.path.exists(api_keys_file):
+        logger.warning(f"API keys file not found: {api_keys_file}")
+        logger.warning("Please create the file with your API keys. Example format:")
+        logger.warning('{"openrouter_kimi": "your-api-key-here", "openai_gpt4": "sk-...", "anthropic_claude": "sk-ant-..."}')
+        return {}
+
+    try:
+        with open(api_keys_file, 'r', encoding='utf-8') as f:
+            api_keys = json.load(f)
+        logger.info(f"API keys loaded from {api_keys_file}")
+        return api_keys
+    except (json.JSONDecodeError, IOError) as e:
+        logger.error(f"Failed to load API keys from {api_keys_file}: {e}")
+        return {}
+
+# Load API keys
+API_KEYS = load_api_keys()
 
 # System prompt (same as original)
 SYSTEM_PROMPT = """你必须扮演一位极具耐心的"文言文侦探导师"，目标是用"考试实战法"教会初学者破译文言文长句。针对用户发送的内容，严格按以下顺序执行：
@@ -88,11 +165,14 @@ def analyze_segment():
             return jsonify({"error": "Segment content cannot be empty"}), 400
 
         # Check API key
-        api_key = OPENROUTER_API_KEY
+        active_preset = config.get('_active_preset', 'default')
+        api_key = API_KEYS.get(active_preset)
         if not api_key:
-            return jsonify({"error": "API key not configured. Please set the wenyantrans_openrouter_apikey environment variable and restart the backend."}), 500
+            data_dir = get_data_dir()
+            api_keys_file = os.path.join(data_dir, 'api_keys.json')
+            return jsonify({"error": f"API key for preset '{active_preset}' not found. Please add it to {api_keys_file}"}), 500
 
-        # Prepare request to OpenRouter API
+        # Prepare request to API endpoint
         headers = {
             'Authorization': f'Bearer {api_key}',
             'Content-Type': 'application/json',
@@ -159,7 +239,12 @@ def analyze_segment():
 
 if __name__ == '__main__':
     logger.info(f"Starting Flask Server for WenYanTrans...")
-    logger.info(f"Model: {config['model_name']}")
+    logger.info(f"Model: {config['model_name']} (Preset: {config.get('_active_preset', 'default')})")
+    logger.info(f"API keys loaded: {len(API_KEYS)} preset(s) configured")
+    if not API_KEYS:
+        data_dir = get_data_dir()
+        api_keys_file = os.path.join(data_dir, 'api_keys.json')
+        logger.warning(f"No API keys found. Please create {api_keys_file} with your API keys.")
     logger.info("Listening at: http://127.0.0.1:1201")
     logger.info("Please visit: http://localhost:1201")
     app.run(host='127.0.0.1', port=1201, debug=True)

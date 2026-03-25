@@ -1,13 +1,28 @@
 {
-  "model_name": "moonshotai/kimi-k2-thinking",
-  "api_endpoint": "https://openrouter.ai/api/v1/chat/completions",
-  "custom_param": {
-    "provider": {
-      "order": ["chutes/int4", "deepinfra/fp4"],
-      "allow_fallbacks": true
+  "active_preset": "openrouter_kimi",
+  "presets": {
+    "openrouter_kimi": {
+      "model_name": "moonshotai/kimi-k2-thinking",
+      "api_endpoint": "https://openrouter.ai/api/v1/chat/completions",
+      "custom_param": {
+        "provider": {
+          "order": ["chutes/int4", "deepinfra/fp4"],
+          "allow_fallbacks": true
+        },
+        "reasoning": {
+          "enabled": true
+        }
+      }
     },
-    "reasoning": {
-      "enabled": true
+    "openai_gpt4": {
+      "model_name": "gpt-4-turbo",
+      "api_endpoint": "https://api.openai.com/v1/chat/completions",
+      "custom_param": {}
+    },
+    "anthropic_claude": {
+      "model_name": "claude-3-opus",
+      "api_endpoint": "https://api.anthropic.com/v1/messages",
+      "custom_param": {}
     }
   }
 }
