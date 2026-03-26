@@ -251,6 +251,33 @@ def analyze_segment():
         return jsonify({"error": f"Server internal error: {str(e)}"}), 500
 
 
+@app.route('/api/presets', methods=['GET'])
+def get_presets():
+    """返回可用的模型预设列表"""
+    try:
+        presets = config['_raw_config']['presets']
+        active_preset = config.get('_active_preset', 'default')
+        
+        # 返回预设ID列表和当前活动预设
+        preset_list = []
+        for preset_id, preset_config in presets.items():
+            preset_list.append({
+                'id': preset_id,
+                'model_name': preset_config.get('model_name', ''),
+                'api_endpoint': preset_config.get('api_endpoint', ''),
+                'is_active': preset_id == active_preset
+            })
+        
+        return jsonify({
+            'success': True,
+            'presets': preset_list,
+            'active_preset': active_preset
+        })
+    except Exception as e:
+        logger.error(f"Failed to get presets: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     logger.info(f"Starting Flask Server for WenYanTrans...")
     logger.info(f"Model: {config['model_name']} (Preset: {config.get('_active_preset', 'default')})")

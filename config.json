@@ -14,7 +14,7 @@
         }
       }
     },
-    "openrouter_deepseek": {
+    "deepseek": {
       "model_name": "deepseek-reasoner",
       "api_endpoint": "https://api.deepseek.com/v1/chat/completions",
       "custom_param": {}
