@@ -22,6 +22,16 @@
                 <button id="paste-btn" class="text-btn">粘贴</button>
             </div>
             <input type="file" id="file-input" accept=".txt" style="display: none;">
+            
+            <div class="model-selector-row">
+                <label for="model-select">分析模型：</label>
+                <select id="model-select">
+                    <option value="openrouter_kimi">月之暗面 Kimi (推理版)</option>
+                    <option value="openai_gpt4">OpenAI GPT-4 Turbo</option>
+                    <option value="anthropic_claude">Anthropic Claude 3 Opus</option>
+                </select>
+            </div>
+            
             <textarea id="text-input" placeholder="请粘贴您的文言文材料..."></textarea>
 
             <div id="status-message" style="color: #d93025; margin-top: 5px;"></div>

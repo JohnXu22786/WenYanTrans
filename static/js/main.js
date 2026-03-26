@@ -3,7 +3,7 @@
 // -------------------------------------
 
 // 导入配置与常量
-import { MAX_CONCURRENT_CALLS, MAX_RETRY_ATTEMPTS, BACKEND_ENDPOINT, SYSTEM_PROMPT, els } from './modules/config.js';
+import { MAX_CONCURRENT_CALLS, MAX_RETRY_ATTEMPTS, BACKEND_ENDPOINT, SYSTEM_PROMPT, els, MODEL_PRESETS, DEFAULT_MODEL_PRESET } from './modules/config.js';
 import state from './modules/state.js';
 import { splitText } from './modules/textProcessor.js';
 import { processItem, runQueue, regenerateSegment } from './modules/apiClient.js';
@@ -165,6 +165,31 @@ function init() {
     els.uploadBtn = document.getElementById('upload-btn');
     els.pasteBtn = document.getElementById('paste-btn');
     els.themeToggleBtn = document.getElementById('theme-toggle-btn');
+    els.modelSelect = document.getElementById('model-select');
+
+    // 初始化模型选择下拉菜单
+    if (els.modelSelect) {
+        // 清空现有选项
+        els.modelSelect.innerHTML = '';
+        
+        // 添加预设选项
+        Object.values(MODEL_PRESETS).forEach(preset => {
+            const option = document.createElement('option');
+            option.value = preset.id;
+            option.textContent = preset.name;
+            if (preset.id === DEFAULT_MODEL_PRESET) {
+                option.selected = true;
+                state.selectedModelPreset = preset.id;
+            }
+            els.modelSelect.appendChild(option);
+        });
+        
+        // 添加变更事件监听器
+        els.modelSelect.addEventListener('change', function() {
+            state.selectedModelPreset = this.value;
+            console.log('模型预设已切换至:', this.value);
+        });
+    }
 
     updateApiStatusUI('ready');
     initTheme();

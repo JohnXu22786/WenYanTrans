@@ -28,6 +28,23 @@ export const SYSTEM_PROMPT = `你必须扮演一位极具耐心的"文言文侦�
 
 **核心原则**：第2步是"精准狙击"而非"地毯式轰炸"，70%精力用于疏通长句逻辑，30%用于攻克真难点。必须让初学者看见"如何从懂字词到懂句子"的破案路径。`;
 
+// 模型预设配置（与config.json中的presets对应）
+export const MODEL_PRESETS = {
+    openrouter_kimi: {
+        id: 'openrouter_kimi',
+        name: '月之暗面 Kimi (推理版)',
+        description: 'Moonshot AI Kimi K2 Thinking 模型，支持推理'
+    },
+    openrouter_deepseek: {
+        id: 'openrouter_deepseek',
+        name: 'DeepSeek V3.2 (推理版)',
+        description: 'DeepSeek V3.2 模型，支持推理'
+    }
+};
+
+// 默认模型预设（与config.json中的active_preset对应）
+export const DEFAULT_MODEL_PRESET = 'openrouter_kimi';
+
 // DOM元素引用（将在main.js中初始化）
 export const els = {
     textInput: null,
@@ -44,5 +61,6 @@ export const els = {
     failedStatus: null,
     uploadBtn: null,
     pasteBtn: null,
-    themeToggleBtn: null
+    themeToggleBtn: null,
+    modelSelect: null
 };

@@ -164,8 +164,22 @@ def analyze_segment():
         if not segment:
             return jsonify({"error": "Segment content cannot be empty"}), 400
 
-        # Check API key
-        active_preset = config.get('_active_preset', 'default')
+        # Determine preset from request or use default
+        requested_preset = data.get('preset')
+        if requested_preset and requested_preset in config['_raw_config']['presets']:
+            active_preset = requested_preset
+        else:
+            active_preset = config.get('_active_preset', 'default')
+            if requested_preset:
+                logger.warning(f"Requested preset '{requested_preset}' not found, using default '{active_preset}'")
+        
+        # Get preset configuration
+        if active_preset not in config['_raw_config']['presets']:
+            return jsonify({"error": f"Preset '{active_preset}' not found in configuration"}), 400
+        
+        preset_config = config['_raw_config']['presets'][active_preset]
+        
+        # Check API key for selected preset
         api_key = API_KEYS.get(active_preset)
         if not api_key:
             data_dir = get_data_dir()
@@ -181,15 +195,15 @@ def analyze_segment():
         }
 
         payload = {
-            "model": config['model_name'],
+            "model": preset_config['model_name'],
             "messages": [
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": segment}
             ]
         }
 
-        # Add custom parameters if specified in config
-        custom_param = config.get('custom_param')
+        # Add custom parameters if specified in preset config
+        custom_param = preset_config.get('custom_param')
         if custom_param and isinstance(custom_param, dict):
             # Merge all custom parameters into payload (excluding model and messages which are already set)
             for key, value in custom_param.items():
@@ -198,11 +212,11 @@ def analyze_segment():
                     payload[key] = value
         # Note: No backward compatibility - config must use custom_param for any additional parameters
 
-        logger.info(f"Analyzing segment, length: {len(segment)} characters")
+        logger.info(f"Analyzing segment (preset: {active_preset}, model: {preset_config['model_name']}), length: {len(segment)} characters")
 
         # Send request
         response = requests.post(
-            config['api_endpoint'],
+            preset_config['api_endpoint'],
             headers=headers,
             json=payload,
             timeout=120  # 120 seconds timeout
