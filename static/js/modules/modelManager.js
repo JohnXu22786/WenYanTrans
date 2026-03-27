@@ -323,19 +323,40 @@ function handleNewModel() {
  * 初始化拖拽排序
  */
 function initDragAndDrop() {
+    let dragOverElement = null;
+    let lastDragTime = 0;
+    
     modelList.addEventListener('dragstart', (e) => {
-        if (e.target.tagName === 'LI') {
-            draggingItem = e.target;
-            setTimeout(() => e.target.classList.add('dragging'), 0);
-        }
+        const li = e.target.closest('li');
+        if (!li) return;
+        
+        draggingItem = li;
+        // 设置拖动效果
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', '');
+        
+        setTimeout(() => {
+            li.classList.add('dragging');
+            // 添加拖动开始时的动画，与CSS保持一致
+            li.style.transition = 'all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1)';
+        }, 0);
     });
     
     modelList.addEventListener('dragend', (e) => {
         if (draggingItem) {
             draggingItem.classList.remove('dragging');
+            draggingItem.style.transition = '';
             draggingItem = null;
             saveOrderBtn.style.display = 'block'; // 显示保存按钮
         }
+        // 清除所有 drag-over 状态
+        if (dragOverElement) {
+            dragOverElement.classList.remove('drag-over');
+            dragOverElement = null;
+        }
+        Array.from(modelList.children).forEach(child => {
+            child.classList.remove('drag-over');
+        });
     });
     
     modelList.addEventListener('dragover', (e) => {
@@ -343,8 +364,44 @@ function initDragAndDrop() {
         const afterElement = getDragAfterElement(modelList, e.clientY);
         const draggable = document.querySelector('.dragging');
         
-        if (draggable && afterElement) {
-            modelList.insertBefore(draggable, afterElement);
+        // 清除之前的高亮
+        if (dragOverElement && dragOverElement !== afterElement) {
+            dragOverElement.classList.remove('drag-over');
+        }
+        
+        // 设置新的高亮
+        if (afterElement) {
+            afterElement.classList.add('drag-over');
+            dragOverElement = afterElement;
+        } else {
+            // 如果 afterElement 为 null，说明拖动到了列表末尾
+            // 可以高亮最后一个元素或什么都不做
+            if (dragOverElement) {
+                dragOverElement.classList.remove('drag-over');
+                dragOverElement = null;
+            }
+        }
+        
+        // 节流插入操作，每50ms执行一次，使动画更流畅
+        const now = Date.now();
+        if (draggable && now - lastDragTime > 50) {
+            if (afterElement) {
+                modelList.insertBefore(draggable, afterElement);
+            } else {
+                // 如果没有 afterElement，则追加到末尾
+                modelList.appendChild(draggable);
+            }
+            lastDragTime = now;
+        }
+    });
+    
+    modelList.addEventListener('dragleave', (e) => {
+        // 当拖动离开列表时，清除高亮
+        if (!e.relatedTarget || !modelList.contains(e.relatedTarget)) {
+            if (dragOverElement) {
+                dragOverElement.classList.remove('drag-over');
+                dragOverElement = null;
+            }
         }
     });
 }
@@ -355,16 +412,50 @@ function initDragAndDrop() {
 function getDragAfterElement(container, y) {
     const draggableElements = [...container.querySelectorAll('li:not(.dragging)')];
     
-    return draggableElements.reduce((closest, child) => {
+    // 如果没有可放置的元素，返回 null
+    if (draggableElements.length === 0) {
+        return null;
+    }
+    
+    let closestBefore = { offset: Number.NEGATIVE_INFINITY, element: null };
+    let closestAfter = { offset: Number.POSITIVE_INFINITY, element: null };
+    
+    for (const child of draggableElements) {
         const box = child.getBoundingClientRect();
         const offset = y - box.top - box.height / 2;
         
-        if (offset < 0 && offset > closest.offset) {
-            return { offset: offset, element: child };
+        if (offset < 0) {
+            // 鼠标在元素的上半部分，候选插入到该元素之前
+            if (offset > closestBefore.offset) {
+                closestBefore = { offset, element: child };
+            }
         } else {
-            return closest;
+            // 鼠标在元素的下半部分，候选插入到该元素之后
+            if (offset < closestAfter.offset) {
+                closestAfter = { offset, element: child };
+            }
         }
-    }, { offset: Number.NEGATIVE_INFINITY }).element;
+    }
+    
+    // 优先选择上半部分的元素（插入到之前）
+    if (closestBefore.element) {
+        return closestBefore.element;
+    }
+    
+    // 如果没有上半部分的元素，则选择下半部分的元素
+    if (closestAfter.element) {
+        // 如果目标元素不是最后一个，则返回它的下一个兄弟元素（插入到之后）
+        const nextSibling = closestAfter.element.nextElementSibling;
+        if (nextSibling) {
+            return nextSibling;
+        } else {
+            // 如果是最后一个元素，则返回 null 表示插入到末尾
+            return null;
+        }
+    }
+    
+    // 默认返回 null（应该不会执行到这里）
+    return null;
 }
 
 /**
