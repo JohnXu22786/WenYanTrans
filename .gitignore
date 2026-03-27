@@ -72,4 +72,4 @@ instance/
 
 # Windows
 memory/
-api_keys.json
+opencode.json

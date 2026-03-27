@@ -19,72 +19,7 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
-# Load configuration
-CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'config.json')
-try:
-    with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
-        config_data = json.load(f)
-    logger.info("Configuration loaded successfully")
-
-    # Normalize configuration structure for backward compatibility
-    # If config has old flat structure, convert to new multi-preset structure
-    if 'presets' not in config_data:
-        # Old format detected - convert to new format
-        logger.info("Old config format detected, converting to multi-preset format")
-        config_data = {
-            'active_preset': 'default',
-            'presets': {
-                'default': {
-                    'model_name': config_data.get('model_name'),
-                    'api_endpoint': config_data.get('api_endpoint'),
-                    'custom_param': config_data.get('custom_param', {})
-                }
-            }
-        }
-        # Validate that required fields exist in the converted config
-        if not config_data['presets']['default']['model_name']:
-            raise ValueError("Missing required field in config.json: model_name")
-        if not config_data['presets']['default']['api_endpoint']:
-            raise ValueError("Missing required field in config.json: api_endpoint")
-
-    # Validate new config structure
-    if 'active_preset' not in config_data:
-        raise ValueError("Missing required field in config.json: active_preset")
-    if 'presets' not in config_data:
-        raise ValueError("Missing required field in config.json: presets")
-
-    active_preset = config_data['active_preset']
-    if active_preset not in config_data['presets']:
-        raise ValueError(f"Active preset '{active_preset}' not found in presets")
-
-    preset_config = config_data['presets'][active_preset]
-
-    # Validate required fields in selected preset
-    required_fields = ['model_name', 'api_endpoint']
-    for field in required_fields:
-        if field not in preset_config:
-            raise ValueError(f"Missing required field in preset '{active_preset}': {field}")
-
-    # Create normalized config object for backward compatibility
-    config = {
-        'model_name': preset_config['model_name'],
-        'api_endpoint': preset_config['api_endpoint'],
-        'custom_param': preset_config.get('custom_param', {}),
-        '_raw_config': config_data,  # Keep full config for reference
-        '_active_preset': active_preset
-    }
-
-except FileNotFoundError:
-    logger.error(f"Configuration file {CONFIG_PATH} not found")
-    raise
-except json.JSONDecodeError as e:
-    logger.error(f"Invalid JSON in config.json: {e}")
-    raise
-except ValueError as e:
-    logger.error(str(e))
-    raise
-
-# API key management - read from system data folder
+# Platform-specific data directory for storing configuration with API keys
 def get_data_dir():
     """Get platform-specific data directory for WenYanTrans"""
     home = os.path.expanduser("~")
@@ -101,28 +36,124 @@ def get_data_dir():
     os.makedirs(data_dir, exist_ok=True)
     return data_dir
 
-def load_api_keys():
-    """Load API keys from data directory"""
+# Load configuration with support for system config directory (for API keys)
+CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'config.json')
+KEY_CONFIG_PATH = os.path.join(get_data_dir(), 'config.json')
+
+def load_config():
+    """Load configuration from system config directory (AppData/Roaming) if exists, otherwise from config.json"""
+    global config_data  # Update the global config_data variable
+    
+    config_path = KEY_CONFIG_PATH if os.path.exists(KEY_CONFIG_PATH) else CONFIG_PATH
+    logger.info(f"Loading configuration from: {config_path}")
+    
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            raw_data = json.load(f)
+        
+        # Normalize configuration structure for backward compatibility
+        # If config has old flat structure, convert to new multi-preset structure
+        if 'presets' not in raw_data:
+            # Old format detected - convert to new format
+            logger.info("Old config format detected, converting to multi-preset format")
+            raw_data = {
+                'active_preset': 'default',
+                'presets': {
+                    'default': {
+                        'model_name': raw_data.get('model_name'),
+                        'api_endpoint': raw_data.get('api_endpoint'),
+                        'custom_param': raw_data.get('custom_param', {})
+                    }
+                }
+            }
+            # Validate that required fields exist in the converted config
+            if not raw_data['presets']['default']['model_name']:
+                raise ValueError("Missing required field in config.json: model_name")
+            if not raw_data['presets']['default']['api_endpoint']:
+                raise ValueError("Missing required field in config.json: api_endpoint")
+
+        # Validate new config structure
+        if 'active_preset' not in raw_data:
+            raise ValueError("Missing required field in config.json: active_preset")
+        if 'presets' not in raw_data:
+            raise ValueError("Missing required field in config.json: presets")
+
+        active_preset = raw_data['active_preset']
+        if active_preset not in raw_data['presets']:
+            raise ValueError(f"Active preset '{active_preset}' not found in presets")
+
+        preset_config = raw_data['presets'][active_preset]
+
+        # Validate required fields in selected preset
+        required_fields = ['model_name', 'api_endpoint']
+        for field in required_fields:
+            if field not in preset_config:
+                raise ValueError(f"Missing required field in preset '{active_preset}': {field}")
+
+        # Create normalized config object for backward compatibility
+        config = {
+            'model_name': preset_config['model_name'],
+            'api_endpoint': preset_config['api_endpoint'],
+            'custom_param': preset_config.get('custom_param', {}),
+            '_raw_config': raw_data,  # Keep full config for reference
+            '_active_preset': active_preset
+        }
+        
+        # Update global config_data reference
+        config_data = raw_data
+        
+        logger.info(f"Configuration loaded successfully (preset: {active_preset})")
+        return config
+        
+    except FileNotFoundError:
+        logger.error(f"Configuration file {config_path} not found")
+        raise
+    except json.JSONDecodeError as e:
+        logger.error(f"Invalid JSON in config file: {e}")
+        raise
+    except ValueError as e:
+        logger.error(str(e))
+        raise
+
+def save_config(config_data):
+    """Save configuration to system config directory (AppData/Roaming)"""
+    os.makedirs(os.path.dirname(KEY_CONFIG_PATH), exist_ok=True)
+    with open(KEY_CONFIG_PATH, 'w', encoding='utf-8') as f:
+        json.dump(config_data, f, indent=2, ensure_ascii=False)
+    logger.info(f"Configuration saved to: {KEY_CONFIG_PATH}")
+
+# Load configuration
+config = load_config()
+config_data = config['_raw_config']  # Full config data
+
+
+def get_api_key(preset_id):
+    """Get API key for a preset, first from config, then from legacy api_keys.json"""
+    # First try to get API key from config
+    if preset_id in config_data.get('presets', {}):
+        preset = config_data['presets'][preset_id]
+        if 'api_key' in preset and preset['api_key'].strip():
+            return preset['api_key']
+    
+    # Fallback to legacy api_keys.json
     data_dir = get_data_dir()
     api_keys_file = os.path.join(data_dir, 'api_keys.json')
+    
+    if os.path.exists(api_keys_file):
+        try:
+            with open(api_keys_file, 'r', encoding='utf-8') as f:
+                api_keys = json.load(f)
+            if preset_id in api_keys:
+                return api_keys[preset_id]
+        except (json.JSONDecodeError, IOError) as e:
+            logger.error(f"Failed to load API keys from {api_keys_file}: {e}")
+    
+    # No API key found
+    logger.warning(f"No API key found for preset '{preset_id}'")
+    return None
 
-    if not os.path.exists(api_keys_file):
-        logger.warning(f"API keys file not found: {api_keys_file}")
-        logger.warning("Please create the file with your API keys. Example format:")
-        logger.warning('{"openrouter_kimi": "your-api-key-here", "openai_gpt4": "sk-...", "anthropic_claude": "sk-ant-..."}')
-        return {}
-
-    try:
-        with open(api_keys_file, 'r', encoding='utf-8') as f:
-            api_keys = json.load(f)
-        logger.info(f"API keys loaded from {api_keys_file}")
-        return api_keys
-    except (json.JSONDecodeError, IOError) as e:
-        logger.error(f"Failed to load API keys from {api_keys_file}: {e}")
-        return {}
-
-# Load API keys
-API_KEYS = load_api_keys()
+# Legacy API_KEYS dictionary for backward compatibility (deprecated)
+API_KEYS = {}
 
 # System prompt (same as original)
 SYSTEM_PROMPT = """你必须扮演一位极具耐心的"文言文侦探导师"，目标是用"考试实战法"教会初学者破译文言文长句。针对用户发送的内容，严格按以下顺序执行：
@@ -166,25 +197,23 @@ def analyze_segment():
 
         # Determine preset from request or use default
         requested_preset = data.get('preset')
-        if requested_preset and requested_preset in config['_raw_config']['presets']:
+        if requested_preset and requested_preset in config_data['presets']:
             active_preset = requested_preset
         else:
-            active_preset = config.get('_active_preset', 'default')
+            active_preset = config_data.get('active_preset', 'default')
             if requested_preset:
                 logger.warning(f"Requested preset '{requested_preset}' not found, using default '{active_preset}'")
         
         # Get preset configuration
-        if active_preset not in config['_raw_config']['presets']:
+        if active_preset not in config_data['presets']:
             return jsonify({"error": f"Preset '{active_preset}' not found in configuration"}), 400
         
-        preset_config = config['_raw_config']['presets'][active_preset]
+        preset_config = config_data['presets'][active_preset]
         
         # Check API key for selected preset
-        api_key = API_KEYS.get(active_preset)
+        api_key = get_api_key(active_preset)
         if not api_key:
-            data_dir = get_data_dir()
-            api_keys_file = os.path.join(data_dir, 'api_keys.json')
-            return jsonify({"error": f"API key for preset '{active_preset}' not found. Please add it to {api_keys_file}"}), 500
+            return jsonify({"error": f"API key for preset '{active_preset}' not found. Please add it via the model management interface."}), 500
 
         # Prepare request to API endpoint
         headers = {
@@ -255,10 +284,10 @@ def analyze_segment():
 def get_presets():
     """返回可用的模型预设列表"""
     try:
-        presets = config['_raw_config']['presets']
-        active_preset = config.get('_active_preset', 'default')
+        presets = config_data['presets']
+        active_preset = config_data.get('active_preset', 'default')
         
-        # 返回预设ID列表和当前活动预设
+        # 返回预设ID列表和当前活动预设（按照配置中的顺序）
         preset_list = []
         for preset_id, preset_config in presets.items():
             preset_list.append({
@@ -275,6 +304,169 @@ def get_presets():
         })
     except Exception as e:
         logger.error(f"Failed to get presets: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/presets', methods=['POST'])
+def create_preset():
+    """创建新模型预设"""
+    try:
+        data = request.json
+        if not data:
+            return jsonify({'success': False, 'error': 'Invalid request data'}), 400
+        
+        preset_id = data.get('id')
+        if not preset_id:
+            return jsonify({'success': False, 'error': 'Preset ID is required'}), 400
+        
+        if preset_id in config_data['presets']:
+            return jsonify({'success': False, 'error': f'Preset "{preset_id}" already exists'}), 400
+        
+        # Validate required fields
+        required_fields = ['model_name', 'api_endpoint']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'success': False, 'error': f'Missing required field: {field}'}), 400
+        
+        # Create new preset
+        config_data['presets'][preset_id] = {
+            'model_name': data['model_name'],
+            'api_endpoint': data['api_endpoint'],
+            'custom_param': data.get('custom_param', {}),
+            'api_key': data.get('api_key', '')
+        }
+        
+        # Save configuration
+        save_config(config_data)
+        
+        # Update global config reference
+        global config
+        config = load_config()
+        
+        return jsonify({'success': True, 'message': f'Preset "{preset_id}" created successfully'})
+    except Exception as e:
+        logger.error(f"Failed to create preset: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/presets/<preset_id>', methods=['PUT'])
+def update_preset(preset_id):
+    """更新现有模型预设"""
+    try:
+        data = request.json
+        if not data:
+            return jsonify({'success': False, 'error': 'Invalid request data'}), 400
+        
+        if preset_id not in config_data['presets']:
+            return jsonify({'success': False, 'error': f'Preset "{preset_id}" not found'}), 404
+        
+        # Update preset fields
+        preset = config_data['presets'][preset_id]
+        if 'model_name' in data:
+            preset['model_name'] = data['model_name']
+        if 'api_endpoint' in data:
+            preset['api_endpoint'] = data['api_endpoint']
+        if 'custom_param' in data:
+            preset['custom_param'] = data['custom_param']
+        if 'api_key' in data:
+            preset['api_key'] = data['api_key']
+        
+        # Save configuration
+        save_config(config_data)
+        
+        # Update global config reference
+        global config
+        config = load_config()
+        
+        return jsonify({'success': True, 'message': f'Preset "{preset_id}" updated successfully'})
+    except Exception as e:
+        logger.error(f"Failed to update preset: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/presets/<preset_id>', methods=['DELETE'])
+def delete_preset(preset_id):
+    """删除模型预设"""
+    try:
+        if preset_id not in config_data['presets']:
+            return jsonify({'success': False, 'error': f'Preset "{preset_id}" not found'}), 404
+        
+        # Check if this is the active preset
+        if config_data['active_preset'] == preset_id:
+            return jsonify({'success': False, 'error': 'Cannot delete the active preset. Please switch to another preset first.'}), 400
+        
+        # Delete preset
+        del config_data['presets'][preset_id]
+        
+        # Save configuration
+        save_config(config_data)
+        
+        # Update global config reference
+        global config
+        config = load_config()
+        
+        return jsonify({'success': True, 'message': f'Preset "{preset_id}" deleted successfully'})
+    except Exception as e:
+        logger.error(f"Failed to delete preset: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/presets/reorder', methods=['POST'])
+def reorder_presets():
+    """重新排序模型预设列表"""
+    try:
+        data = request.json
+        if not data or 'order' not in data:
+            return jsonify({'success': False, 'error': 'Order list is required'}), 400
+        
+        order = data['order']
+        if not isinstance(order, list):
+            return jsonify({'success': False, 'error': 'Order must be a list'}), 400
+        
+        # Validate all preset IDs exist
+        for preset_id in order:
+            if preset_id not in config_data['presets']:
+                return jsonify({'success': False, 'error': f'Preset "{preset_id}" not found'}), 400
+        
+        # Reorder presets by creating a new dict with the specified order
+        new_presets = {}
+        for preset_id in order:
+            new_presets[preset_id] = config_data['presets'][preset_id]
+        
+        # Add any missing presets (should not happen if order includes all)
+        for preset_id, preset in config_data['presets'].items():
+            if preset_id not in new_presets:
+                new_presets[preset_id] = preset
+        
+        config_data['presets'] = new_presets
+        
+        # Save configuration
+        save_config(config_data)
+        
+        # Update global config reference
+        global config
+        config = load_config()
+        
+        return jsonify({'success': True, 'message': 'Presets reordered successfully'})
+    except Exception as e:
+        logger.error(f"Failed to reorder presets: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/presets/<preset_id>', methods=['GET'])
+def get_preset(preset_id):
+    """获取单个模型预设的详细信息"""
+    try:
+        if preset_id not in config_data['presets']:
+            return jsonify({'success': False, 'error': f'Preset "{preset_id}" not found'}), 404
+        
+        preset = config_data['presets'][preset_id].copy()
+        # Include preset ID in response
+        preset['id'] = preset_id
+        
+        return jsonify({'success': True, 'preset': preset})
+    except Exception as e:
+        logger.error(f"Failed to get preset: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 

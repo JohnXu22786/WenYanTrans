@@ -18,6 +18,7 @@ import {
 } from './modules/fileHandlers.js';
 import { showPreview, deleteSegment, getGroupData } from './modules/previewMode.js';
 import { initTheme } from './modules/theme.js';
+import { initModelManagement } from './modules/modelManager.js';
 
 // -------------------------------------
 // 全局函数定义
@@ -233,6 +234,7 @@ function init() {
     updateApiStatusUI('ready');
     initTheme();
     bindEventListeners();
+    initModelManagement();
     state.isPreviewMode = true;
     state.segmentsToRemove.clear();
     state.previewSegments = [];
