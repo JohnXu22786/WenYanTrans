@@ -191,8 +191,10 @@ function init() {
                 data.presets.forEach(preset => {
                     const option = document.createElement('option');
                     option.value = preset.id;
-                    // 显示预设名称（如果存在），否则显示ID
+                    // 显示预设名称
                     option.textContent = preset.name || preset.id;
+                    // 添加悬停提示，显示name和model_name
+                    option.title = (preset.name || preset.id) + ' - ' + (preset.model_name || '');
                     if (preset.is_active) {
                         option.selected = true;
                         state.selectedModelPreset = preset.id;

@@ -284,6 +284,11 @@ def analyze_segment():
 def get_presets():
     """返回可用的模型预设列表"""
     try:
+        # 重新加载配置以确保获取最新的name字段
+        global config_data
+        config = load_config()
+        config_data = config['_raw_config']
+        
         presets = config_data['presets']
         active_preset = config_data.get('active_preset', 'default')
         
