@@ -183,7 +183,7 @@ function renderModelList() {
         // 模型名称
         const nameSpan = document.createElement('span');
         nameSpan.className = 'model-name';
-        nameSpan.textContent = model.name + (model.is_active ? ' (当前使用)' : '');
+        nameSpan.textContent = model.name;
         li.appendChild(nameSpan);
         
         // 操作按钮
