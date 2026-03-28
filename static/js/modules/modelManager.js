@@ -1,6 +1,29 @@
 // 模型管理模块
 import { fetchPresets } from './config.js';
 
+/**
+ * 从显示名称生成预设ID
+ */
+function generatePresetId(displayName) {
+    // 将显示名称转换为小写，用下划线替换非字母数字字符
+    let id = displayName.toLowerCase()
+        .replace(/[^a-z0-9\u4e00-\u9fa5]/g, '_')  // 允许中文，但中文会被替换为下划线
+        .replace(/_+/g, '_')  // 合并连续下划线
+        .replace(/^_+|_+$/g, '');  // 去除首尾下划线
+    
+    // 如果结果为空，使用时间戳
+    if (!id) {
+        id = 'preset_' + Date.now();
+    }
+    
+    // 确保ID以字母开头
+    if (!/^[a-z]/.test(id)) {
+        id = 'model_' + id;
+    }
+    
+    return id;
+}
+
 // DOM 元素引用
 let modal;
 let editModal;
@@ -14,6 +37,7 @@ let saveModelBtn;
 let cancelEditBtn;
 let modelEditForm;
 let editModelIdInput;
+let editDisplayNameInput;
 let editModelNameInput;
 let editApiEndpointInput;
 let editApiKeyInput;
@@ -41,6 +65,7 @@ export function initModelManagement() {
     cancelEditBtn = document.getElementById('cancel-edit-btn');
     modelEditForm = document.getElementById('model-edit-form');
     editModelIdInput = document.getElementById('edit-model-id');
+    editDisplayNameInput = document.getElementById('edit-display-name');
     editModelNameInput = document.getElementById('edit-model-name');
     editApiEndpointInput = document.getElementById('edit-api-endpoint');
     editApiKeyInput = document.getElementById('edit-api-key');
@@ -94,6 +119,7 @@ function openEditModal(model = null) {
         // 编辑现有模型
         editModalTitle.textContent = '编辑模型配置';
         editModelIdInput.value = model.id;
+        editDisplayNameInput.value = model.name || model.id;
         editModelNameInput.value = model.model_name || model.id;
         editApiEndpointInput.value = model.api_endpoint || '';
         editApiKeyInput.value = ''; // 出于安全考虑，不显示现有密钥
@@ -102,6 +128,7 @@ function openEditModal(model = null) {
         // 新建模型
         editModalTitle.textContent = '新建模型配置';
         editModelIdInput.value = '';
+        editDisplayNameInput.value = '';
         editModelNameInput.value = '';
         editApiEndpointInput.value = '';
         editApiKeyInput.value = '';
@@ -145,39 +172,54 @@ async function loadModelList() {
 function renderModelList() {
     modelList.innerHTML = '';
     
+    // 只读预设列表
+    const readonlyPresets = ['openrouter_kimi', 'deepseek'];
+    
     currentModels.forEach(model => {
         const li = document.createElement('li');
         li.dataset.id = model.id;
-        li.draggable = true;
+        li.draggable = !readonlyPresets.includes(model.id); // 只读预设不可拖拽
         
         // 模型名称
         const nameSpan = document.createElement('span');
         nameSpan.className = 'model-name';
-        nameSpan.textContent = model.id + (model.is_active ? ' (当前使用)' : '');
+        nameSpan.textContent = model.name + (model.is_active ? ' (当前使用)' : '');
         li.appendChild(nameSpan);
         
         // 操作按钮
         const actionsDiv = document.createElement('div');
         actionsDiv.className = 'model-actions';
         
-        const editBtn = document.createElement('button');
-        editBtn.className = 'edit-btn';
-        editBtn.textContent = '编辑';
-        editBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            loadModelDetail(model.id);
-        });
+        // 只读预设不显示编辑和删除按钮，显示“只读”标签
+        if (readonlyPresets.includes(model.id)) {
+            const readonlySpan = document.createElement('span');
+            readonlySpan.className = 'readonly-label';
+            readonlySpan.textContent = '只读';
+            readonlySpan.style.color = '#666';
+            readonlySpan.style.fontSize = '0.9em';
+            readonlySpan.style.marginLeft = '10px';
+            actionsDiv.appendChild(readonlySpan);
+        } else {
+            const editBtn = document.createElement('button');
+            editBtn.className = 'edit-btn';
+            editBtn.textContent = '编辑';
+            editBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                loadModelDetail(model.id);
+            });
+            
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.textContent = '删除';
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                deleteModel(model.id);
+            });
+            
+            actionsDiv.appendChild(editBtn);
+            actionsDiv.appendChild(deleteBtn);
+        }
         
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'delete-btn';
-        deleteBtn.textContent = '删除';
-        deleteBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            deleteModel(model.id);
-        });
-        
-        actionsDiv.appendChild(editBtn);
-        actionsDiv.appendChild(deleteBtn);
         li.appendChild(actionsDiv);
         
         modelList.appendChild(li);
@@ -208,19 +250,20 @@ async function loadModelDetail(presetId) {
  */
 async function saveModel() {
     const modelId = editModelIdInput.value.trim();
+    const displayName = editDisplayNameInput.value.trim();
     const modelName = editModelNameInput.value.trim();
     const apiEndpoint = editApiEndpointInput.value.trim();
     const apiKey = editApiKeyInput.value.trim();
     let customParam = {};
     
     // 验证必填字段
-    if (!modelId) {
-        alert('请输入模型ID');
+    if (!displayName) {
+        alert('请输入模型名称');
         return;
     }
     
     if (!modelName) {
-        alert('请输入模型名称');
+        alert('请输入API模型标识符');
         return;
     }
     
@@ -240,6 +283,7 @@ async function saveModel() {
     }
     
     const modelData = {
+        name: displayName,
         model_name: modelName,
         api_endpoint: apiEndpoint,
         custom_param: customParam
@@ -250,20 +294,29 @@ async function saveModel() {
         modelData.api_key = apiKey;
     }
     
+    // 判断是新建还是编辑
+    const isNew = modelId === '';
+    let finalModelId = modelId;
+    
+    // 新建模型时自动生成ID
+    if (isNew) {
+        finalModelId = generatePresetId(displayName);
+        editModelIdInput.value = finalModelId;
+    }
+    
     try {
         let response;
-        const isNew = editModelIdInput.value === '';
         
         if (isNew) {
             // 新建模型
             response = await fetch('/api/presets', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: modelId, ...modelData })
+                body: JSON.stringify({ id: finalModelId, ...modelData })
             });
         } else {
             // 更新现有模型
-            response = await fetch(`/api/presets/${modelId}`, {
+            response = await fetch(`/api/presets/${finalModelId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(modelData)

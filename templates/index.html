@@ -89,8 +89,14 @@
                 <form id="model-edit-form">
                     <input type="hidden" id="edit-model-id" value="">
                     <div class="form-group">
-                        <label for="edit-model-name">模型名称：</label>
+                        <label for="edit-display-name">模型名称：</label>
+                        <input type="text" id="edit-display-name" required>
+                        <small>显示给用户的名称（将自动生成内部标识符）</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-model-name">API模型标识符：</label>
                         <input type="text" id="edit-model-name" required>
+                        <small>API使用的模型标识（如 moonshotai/kimi-k2-thinking）</small>
                     </div>
                     <div class="form-group">
                         <label for="edit-api-endpoint">API 端点：</label>

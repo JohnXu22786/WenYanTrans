@@ -292,6 +292,7 @@ def get_presets():
         for preset_id, preset_config in presets.items():
             preset_list.append({
                 'id': preset_id,
+                'name': preset_config.get('name', preset_id),  # 显示名称，默认为ID
                 'model_name': preset_config.get('model_name', ''),
                 'api_endpoint': preset_config.get('api_endpoint', ''),
                 'is_active': preset_id == active_preset
@@ -330,6 +331,7 @@ def create_preset():
         
         # Create new preset
         config_data['presets'][preset_id] = {
+            'name': data.get('name', preset_id),  # 显示名称，默认为ID
             'model_name': data['model_name'],
             'api_endpoint': data['api_endpoint'],
             'custom_param': data.get('custom_param', {}),
@@ -360,8 +362,15 @@ def update_preset(preset_id):
         if preset_id not in config_data['presets']:
             return jsonify({'success': False, 'error': f'Preset "{preset_id}" not found'}), 404
         
+        # 检查是否为只读预设（openrouter_kimi 和 deepseek）
+        readonly_presets = ['openrouter_kimi', 'deepseek']
+        if preset_id in readonly_presets:
+            return jsonify({'success': False, 'error': f'预设 "{preset_id}" 是只读的，不可编辑'}), 403
+        
         # Update preset fields
         preset = config_data['presets'][preset_id]
+        if 'name' in data:
+            preset['name'] = data['name']
         if 'model_name' in data:
             preset['model_name'] = data['model_name']
         if 'api_endpoint' in data:
@@ -394,6 +403,11 @@ def delete_preset(preset_id):
         # Check if this is the active preset
         if config_data['active_preset'] == preset_id:
             return jsonify({'success': False, 'error': 'Cannot delete the active preset. Please switch to another preset first.'}), 400
+        
+        # 检查是否为只读预设（openrouter_kimi 和 deepseek）
+        readonly_presets = ['openrouter_kimi', 'deepseek']
+        if preset_id in readonly_presets:
+            return jsonify({'success': False, 'error': f'预设 "{preset_id}" 是只读的，不可删除'}), 403
         
         # Delete preset
         del config_data['presets'][preset_id]

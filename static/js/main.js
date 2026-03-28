@@ -191,8 +191,8 @@ function init() {
                 data.presets.forEach(preset => {
                     const option = document.createElement('option');
                     option.value = preset.id;
-                    // 显示预设ID（如"openrouter_kimi"）而不是美化名称
-                    option.textContent = preset.id;
+                    // 显示预设名称（如果存在），否则显示ID
+                    option.textContent = preset.name || preset.id;
                     if (preset.is_active) {
                         option.selected = true;
                         state.selectedModelPreset = preset.id;
