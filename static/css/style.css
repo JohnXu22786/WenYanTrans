@@ -894,3 +894,29 @@ button:disabled {
     color: var(--text-disabled);
     font-size: 0.85em;
 }
+
+/* JSON编辑器样式 */
+#json-editor-container {
+    border-radius: 8px;
+    overflow: hidden;
+    margin-top: 4px;
+}
+
+#json-editor-container .CodeMirror {
+    height: auto;
+    min-height: 60px;
+    max-height: 200px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+#json-editor-container .CodeMirror-scroll {
+    min-height: 60px;
+}
+
+#json-error {
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--delete-color);
+}

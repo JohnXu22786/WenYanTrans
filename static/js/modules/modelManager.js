@@ -28,6 +28,62 @@ function generatePresetId(displayName) {
     return id;
 }
 
+/**
+ * 初始化JSON编辑器
+ */
+function initJsonEditor() {
+    if (jsonEditor) {
+        return; // 已经初始化
+    }
+    
+    const container = document.getElementById('json-editor-container');
+    if (!container) {
+        console.warn('JSON编辑器容器未找到');
+        return;
+    }
+    
+    // 创建CodeMirror编辑器
+    jsonEditor = CodeMirror(container, {
+        mode: 'application/json',
+        theme: 'dracula',
+        lineNumbers: false,
+        foldGutter: false,
+        gutters: ['CodeMirror-lint-markers'],
+        lint: true,
+        autoCloseBrackets: true,
+        matchBrackets: true,
+        indentUnit: 2,
+        tabSize: 2,
+        lineWrapping: true,
+        styleActiveLine: false,
+        viewportMargin: Infinity,
+        height: 'auto',
+        minHeight: '60px',
+        maxHeight: '200px'
+    });
+    
+    // 监听变化，更新隐藏的textarea和错误显示
+    jsonEditor.on('change', (editor) => {
+        const value = editor.getValue();
+        editCustomParamInput.value = value;
+        
+        // 验证JSON并显示错误
+        const errorElement = document.getElementById('json-error');
+        if (value.trim() === '') {
+            errorElement.style.display = 'none';
+            return;
+        }
+        
+        try {
+            JSON.parse(value);
+            errorElement.style.display = 'none';
+        } catch (error) {
+            errorElement.textContent = `JSON解析错误：${error.message}`;
+            errorElement.style.display = 'block';
+        }
+    });
+}
+
 // DOM 元素引用
 let modal;
 let editModal;
@@ -54,6 +110,9 @@ let isApiKeyCleared = false;
 // 当前模型列表数据
 let currentModels = [];
 let draggingItem = null;
+
+// JSON编辑器实例
+let jsonEditor = null;
 
 /**
  * 初始化模型管理功能
@@ -96,6 +155,9 @@ export function initModelManagement() {
     saveModelBtn.addEventListener('click', saveModel);
     clearApiKeyBtn.addEventListener('click', clearApiKey);
     editApiKeyInput.addEventListener('input', handleApiKeyInput);
+    
+    // 初始化JSON编辑器
+    initJsonEditor();
     
     // 初始化拖拽排序
     initDragAndDrop();
@@ -158,6 +220,18 @@ function openEditModal(model = null) {
     
     // 更新API密钥状态显示
     updateApiKeyStatus(model);
+    
+    // 更新JSON编辑器
+    if (jsonEditor) {
+        const value = editCustomParamInput.value;
+        jsonEditor.setValue(value);
+        
+        // 清除错误显示
+        const errorElement = document.getElementById('json-error');
+        if (errorElement) {
+            errorElement.style.display = 'none';
+        }
+    }
     
     editModal.style.display = 'flex';
 }
