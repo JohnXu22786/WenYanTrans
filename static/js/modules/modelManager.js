@@ -2,7 +2,8 @@
 import { fetchPresets } from './config.js';
 
 // 内置模型ID（向后兼容，优先使用API返回的is_builtin字段）
-const READONLY_PRESETS = ['openrouter_kimi', 'deepseek'];
+// 现在完全依赖后端返回的is_builtin字段
+const READONLY_PRESETS = [];
 
 /**
  * 从显示名称生成预设ID

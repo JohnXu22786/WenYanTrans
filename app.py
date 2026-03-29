@@ -40,80 +40,128 @@ def get_data_dir():
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'config.json')
 KEY_CONFIG_PATH = os.path.join(get_data_dir(), 'config.json')
 
+# Built-in presets that cannot be reordered and should appear at the top
+# This will be populated dynamically from base config
+BUILTIN_PRESETS = []
+
 def load_config():
-    """Load configuration from system config directory (AppData/Roaming) if exists, otherwise from config.json"""
+    """Load configuration with merging: base config from project root and overlay from system directory."""
     global config_data  # Update the global config_data variable
     
-    config_path = KEY_CONFIG_PATH if os.path.exists(KEY_CONFIG_PATH) else CONFIG_PATH
-    logger.info(f"Loading configuration from: {config_path}")
-    
+    # Load base configuration from project root
     try:
-        with open(config_path, 'r', encoding='utf-8') as f:
-            raw_data = json.load(f)
-        
-        # Normalize configuration structure for backward compatibility
-        # If config has old flat structure, convert to new multi-preset structure
-        if 'presets' not in raw_data:
-            # Old format detected - convert to new format
-            logger.info("Old config format detected, converting to multi-preset format")
-            raw_data = {
-                'active_preset': 'default',
-                'presets': {
-                    'default': {
-                        'model_name': raw_data.get('model_name'),
-                        'api_endpoint': raw_data.get('api_endpoint'),
-                        'custom_param': raw_data.get('custom_param', {})
-                    }
-                }
-            }
-            # Validate that required fields exist in the converted config
-            if not raw_data['presets']['default']['model_name']:
-                raise ValueError("Missing required field in config.json: model_name")
-            if not raw_data['presets']['default']['api_endpoint']:
-                raise ValueError("Missing required field in config.json: api_endpoint")
-
-        # Validate new config structure
-        if 'active_preset' not in raw_data:
-            raise ValueError("Missing required field in config.json: active_preset")
-        if 'presets' not in raw_data:
-            raise ValueError("Missing required field in config.json: presets")
-
-        active_preset = raw_data['active_preset']
-        if active_preset not in raw_data['presets']:
-            raise ValueError(f"Active preset '{active_preset}' not found in presets")
-
-        preset_config = raw_data['presets'][active_preset]
-
-        # Validate required fields in selected preset
-        required_fields = ['model_name', 'api_endpoint']
-        for field in required_fields:
-            if field not in preset_config:
-                raise ValueError(f"Missing required field in preset '{active_preset}': {field}")
-
-        # Create normalized config object for backward compatibility
-        config = {
-            'model_name': preset_config['model_name'],
-            'api_endpoint': preset_config['api_endpoint'],
-            'custom_param': preset_config.get('custom_param', {}),
-            '_raw_config': raw_data,  # Keep full config for reference
-            '_active_preset': active_preset
-        }
-        
-        # Update global config_data reference
-        config_data = raw_data
-        
-        logger.info(f"Configuration loaded successfully (preset: {active_preset})")
-        return config
-        
+        with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
+            base_config = json.load(f)
     except FileNotFoundError:
-        logger.error(f"Configuration file {config_path} not found")
+        logger.error(f"Base configuration file {CONFIG_PATH} not found")
         raise
     except json.JSONDecodeError as e:
-        logger.error(f"Invalid JSON in config file: {e}")
+        logger.error(f"Invalid JSON in base config file: {e}")
         raise
-    except ValueError as e:
-        logger.error(str(e))
-        raise
+    
+    # Load overlay configuration from system directory if exists
+    if os.path.exists(KEY_CONFIG_PATH):
+        try:
+            with open(KEY_CONFIG_PATH, 'r', encoding='utf-8') as f:
+                overlay_config = json.load(f)
+            logger.info(f"Overlay configuration loaded from: {KEY_CONFIG_PATH}")
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            logger.warning(f"Failed to load overlay config, using base config only: {e}")
+            overlay_config = None
+    else:
+        overlay_config = None
+    
+    # Start with overlay config if exists, otherwise use base config
+    if overlay_config is not None:
+        raw_data = overlay_config
+    else:
+        raw_data = base_config
+    
+    # Ensure config has required structure
+    if 'presets' not in raw_data:
+        # Old format detected - convert to new format
+        logger.info("Old config format detected, converting to multi-preset format")
+        raw_data = {
+            'active_preset': 'default',
+            'presets': {
+                'default': {
+                    'model_name': raw_data.get('model_name'),
+                    'api_endpoint': raw_data.get('api_endpoint'),
+                    'custom_param': raw_data.get('custom_param', {})
+                }
+            }
+        }
+        # Validate that required fields exist in the converted config
+        if not raw_data['presets']['default']['model_name']:
+            raise ValueError("Missing required field in config.json: model_name")
+        if not raw_data['presets']['default']['api_endpoint']:
+            raise ValueError("Missing required field in config.json: api_endpoint")
+    
+    # Merge built-in presets from base config
+    # Ensure base_config also has presets
+    if 'presets' in base_config:
+        # Update BUILTIN_PRESETS with all preset IDs from base config
+        global BUILTIN_PRESETS
+        BUILTIN_PRESETS = list(base_config['presets'].keys())
+        logger.info(f"Built-in presets from base config: {BUILTIN_PRESETS}")
+        
+        for preset_id in BUILTIN_PRESETS:
+            base_preset = base_config['presets'][preset_id]
+            # Ensure preset exists in raw_data
+            if preset_id not in raw_data['presets']:
+                raw_data['presets'][preset_id] = base_preset
+                logger.info(f"Added missing built-in preset: {preset_id}")
+            else:
+                # Update fields from base config, but preserve api_key and custom_param from overlay
+                overlay_preset = raw_data['presets'][preset_id]
+                # Update name, model_name, api_endpoint from base config
+                for field in ['name', 'model_name', 'api_endpoint']:
+                    if field in base_preset:
+                        overlay_preset[field] = base_preset[field]
+                # Note: custom_param and api_key are kept from overlay_preset
+                # If overlay_preset lacks custom_param, use base_preset's
+                if 'custom_param' not in overlay_preset and 'custom_param' in base_preset:
+                    overlay_preset['custom_param'] = base_preset['custom_param']
+                # api_key is never taken from base config (should not be stored there)
+    
+    # Log merged built-in preset names for debugging
+    for preset_id in BUILTIN_PRESETS:
+        if preset_id in raw_data['presets']:
+            name = raw_data['presets'][preset_id].get('name', '')
+            logger.info(f"Built-in preset '{preset_id}' name: '{name}'")
+    
+    # Validate new config structure
+    if 'active_preset' not in raw_data:
+        raise ValueError("Missing required field in config.json: active_preset")
+    if 'presets' not in raw_data:
+        raise ValueError("Missing required field in config.json: presets")
+
+    active_preset = raw_data['active_preset']
+    if active_preset not in raw_data['presets']:
+        raise ValueError(f"Active preset '{active_preset}' not found in presets")
+
+    preset_config = raw_data['presets'][active_preset]
+
+    # Validate required fields in selected preset
+    required_fields = ['model_name', 'api_endpoint']
+    for field in required_fields:
+        if field not in preset_config:
+            raise ValueError(f"Missing required field in preset '{active_preset}': {field}")
+
+    # Create normalized config object for backward compatibility
+    config = {
+        'model_name': preset_config['model_name'],
+        'api_endpoint': preset_config['api_endpoint'],
+        'custom_param': preset_config.get('custom_param', {}),
+        '_raw_config': raw_data,  # Keep full config for reference
+        '_active_preset': active_preset
+    }
+    
+    # Update global config_data reference
+    config_data = raw_data
+    
+    logger.info(f"Configuration loaded successfully (preset: {active_preset})")
+    return config
 
 def save_config(config_data):
     """Save configuration to system config directory (AppData/Roaming)"""
@@ -179,7 +227,6 @@ SYSTEM_PROMPT = """你必须扮演一位极具耐心的"文言文侦探导师"�
 **核心原则**：第2步是"精准狙击"而非"地毯式轰炸"，70%精力用于疏通长句逻辑，30%用于攻克真难点。必须让初学者看见"如何从懂字词到懂句子"的破案路径。"""
 
 # Built-in presets that cannot be reordered and should appear at the top
-BUILTIN_PRESETS = ['deepseek', 'openrouter_kimi']
 
 @app.route('/')
 def index():
@@ -384,9 +431,8 @@ def update_preset(preset_id):
         if preset_id not in config_data['presets']:
             return jsonify({'success': False, 'error': f'Preset "{preset_id}" not found'}), 404
         
-        # 检查是否为只读预设（openrouter_kimi 和 deepseek）
-        readonly_presets = ['openrouter_kimi', 'deepseek']
-        if preset_id in readonly_presets:
+        # 检查是否为只读预设（所有从base config加载的预设）
+        if preset_id in BUILTIN_PRESETS:
             # 只读预设只允许更新api_key和custom_param字段
             preset = config_data['presets'][preset_id]
             updated = False
@@ -449,9 +495,8 @@ def delete_preset(preset_id):
         if config_data['active_preset'] == preset_id:
             return jsonify({'success': False, 'error': 'Cannot delete the active preset. Please switch to another preset first.'}), 400
         
-        # 检查是否为只读预设（openrouter_kimi 和 deepseek）
-        readonly_presets = ['openrouter_kimi', 'deepseek']
-        if preset_id in readonly_presets:
+        # 检查是否为只读预设（所有从base config加载的预设）
+        if preset_id in BUILTIN_PRESETS:
             return jsonify({'success': False, 'error': f'预设 "{preset_id}" 是只读的，不可删除'}), 403
         
         # Delete preset
