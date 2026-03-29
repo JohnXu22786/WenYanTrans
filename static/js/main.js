@@ -3,7 +3,7 @@
 // -------------------------------------
 
 // 导入配置与常量
-import { MAX_CONCURRENT_CALLS, MAX_RETRY_ATTEMPTS, BACKEND_ENDPOINT, SYSTEM_PROMPT, els } from './modules/config.js';
+import { MAX_CONCURRENT_CALLS, MAX_RETRY_ATTEMPTS, BACKEND_ENDPOINT, SYSTEM_PROMPT, els, MODEL_PRESETS, DEFAULT_MODEL_PRESET, fetchPresets } from './modules/config.js';
 import state from './modules/state.js';
 import { splitText } from './modules/textProcessor.js';
 import { processItem, runQueue, regenerateSegment } from './modules/apiClient.js';
@@ -18,6 +18,7 @@ import {
 } from './modules/fileHandlers.js';
 import { showPreview, deleteSegment, getGroupData } from './modules/previewMode.js';
 import { initTheme } from './modules/theme.js';
+import { initModelManagement } from './modules/modelManager.js';
 
 // -------------------------------------
 // 全局函数定义
@@ -165,10 +166,77 @@ function init() {
     els.uploadBtn = document.getElementById('upload-btn');
     els.pasteBtn = document.getElementById('paste-btn');
     els.themeToggleBtn = document.getElementById('theme-toggle-btn');
+    els.modelSelect = document.getElementById('model-select');
+
+    // 初始化模型选择下拉菜单（动态从后端获取预设）
+    if (els.modelSelect) {
+        // 清空现有选项
+        els.modelSelect.innerHTML = '';
+        
+        // 添加一个"加载中..."选项
+        const loadingOption = document.createElement('option');
+        loadingOption.value = '';
+        loadingOption.textContent = '正在加载模型预设...';
+        els.modelSelect.appendChild(loadingOption);
+        els.modelSelect.disabled = true;
+        
+        // 从后端API获取预设列表
+        fetchPresets().then(data => {
+            // 清除"加载中..."选项
+            els.modelSelect.innerHTML = '';
+            els.modelSelect.disabled = false;
+            
+            if (data.success && data.presets.length > 0) {
+                // 添加从后端获取的预设选项
+                data.presets.forEach(preset => {
+                    const option = document.createElement('option');
+                    option.value = preset.id;
+                    // 显示预设名称
+                    option.textContent = preset.name || preset.id;
+                    // 添加悬停提示，显示name和model_name
+                    option.title = (preset.name || preset.id) + ' - ' + (preset.model_name || '');
+                    if (preset.is_active) {
+                        option.selected = true;
+                        state.selectedModelPreset = preset.id;
+                    }
+                    els.modelSelect.appendChild(option);
+                });
+                
+                // 如果没有活动预设，则选择第一个
+                if (!state.selectedModelPreset && data.presets.length > 0) {
+                    els.modelSelect.selectedIndex = 0;
+                    state.selectedModelPreset = data.presets[0].id;
+                }
+            } else {
+                // 如果获取失败，添加一个默认选项
+                const defaultOption = document.createElement('option');
+                defaultOption.value = 'default';
+                defaultOption.textContent = '默认模型';
+                els.modelSelect.appendChild(defaultOption);
+                state.selectedModelPreset = 'default';
+            }
+        }).catch(error => {
+            console.error('Failed to load model presets:', error);
+            els.modelSelect.innerHTML = '';
+            const errorOption = document.createElement('option');
+            errorOption.value = 'error';
+            errorOption.textContent = '加载失败';
+            els.modelSelect.appendChild(errorOption);
+            state.selectedModelPreset = 'error';
+            els.modelSelect.disabled = false;
+        });
+        
+        // 添加变更事件监听器
+        els.modelSelect.addEventListener('change', function() {
+            state.selectedModelPreset = this.value;
+            console.log('模型预设已切换至:', this.value);
+        });
+    }
 
     updateApiStatusUI('ready');
     initTheme();
     bindEventListeners();
+    initModelManagement();
     state.isPreviewMode = true;
     state.segmentsToRemove.clear();
     state.previewSegments = [];

@@ -28,6 +28,31 @@ export const SYSTEM_PROMPT = `你必须扮演一位极具耐心的"文言文侦�
 
 **核心原则**：第2步是"精准狙击"而非"地毯式轰炸"，70%精力用于疏通长句逻辑，30%用于攻克真难点。必须让初学者看见"如何从懂字词到懂句子"的破案路径。`;
 
+// 从后端API获取模型预设（动态从config.json读取）
+export async function fetchPresets() {
+    try {
+        const response = await fetch(`${BACKEND_ENDPOINT}/api/presets`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        if (!data.success) {
+            throw new Error(data.error || 'Failed to fetch presets');
+        }
+        return data;
+    } catch (error) {
+        console.error('Failed to fetch presets from backend:', error);
+        // 返回空预设列表作为降级方案
+        return { success: false, presets: [], active_preset: '' };
+    }
+}
+
+// 模型预设配置（将在运行时从后端加载）
+export const MODEL_PRESETS = {};
+
+// 默认模型预设（将在运行时从后端获取）
+export let DEFAULT_MODEL_PRESET = '';
+
 // DOM元素引用（将在main.js中初始化）
 export const els = {
     textInput: null,
@@ -44,5 +69,6 @@ export const els = {
     failedStatus: null,
     uploadBtn: null,
     pasteBtn: null,
-    themeToggleBtn: null
+    themeToggleBtn: null,
+    modelSelect: null
 };

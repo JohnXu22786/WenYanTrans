@@ -28,7 +28,8 @@ export async function processItem(item) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                segment: item.segment
+                segment: item.segment,
+                preset: state.selectedModelPreset
             })
         });
 
@@ -162,7 +163,8 @@ export async function regenerateSegment(index) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                segment: item.original
+                segment: item.original,
+                preset: state.selectedModelPreset
             })
         });
 

@@ -56,6 +56,20 @@
 - **OpenRouter API** - Unified AI model gateway
 - **Kimi Model** - `moonshotai/kimi-k2-thinking` (DeepSeek's Kimi)
 
+## 📝 Recent Updates
+
+### **Version 1.1.0** (March 2026)
+- **Model Selector UI**: Added dropdown menu for selecting AI models directly in the interface
+- **Simplified Model Presets**: Removed OpenAI GPT-4 and Anthropic Claude, keeping only Kimi and DeepSeek
+- **DeepSeek Official API**: Updated DeepSeek configuration to use official API endpoint (`api.deepseek.com`)
+- **Enhanced API Key Management**: API keys are now stored in `api_keys.json` file instead of environment variables
+- **Improved Error Handling**: Better error messages and validation for model preset selection
+
+### **Key Configuration Changes**
+1. **Model Selection**: Users can now switch between Kimi and DeepSeek models via dropdown menu
+2. **API Configuration**: DeepSeek preset now uses official API (`deepseek-reasoner` model via `api.deepseek.com`)
+3. **Key Storage**: API keys are managed in `C:\Users\<username>\AppData\Roaming\WenYanTrans\api_keys.json`
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -85,34 +99,60 @@
    pip install -r requirements.txt
    ```
 
-4. **Configure API key**
-   ```bash
-   # Set environment variable for OpenRouter API key
-   # Get a free API key from https://openrouter.ai
-   # On Windows (Command Prompt):
-   set wenyantrans_openrouter_apikey=your-api-key-here
-   # On Windows (PowerShell):
-   $env:wenyantrans_openrouter_apikey="your-api-key-here"
-   # On macOS/Linux:
-   export wenyantrans_openrouter_apikey=your-api-key-here
-   ```
-   Note: The API key is now read from the environment variable `wenyantrans_openrouter_apikey` and should not be stored in config.json.
+4. **Configure API Keys and Model Presets**
 
+   a. **API Keys Configuration**
+   
+   Create an `api_keys.json` file in the application data directory:
+   
+   **Windows**: `C:\Users\<your-username>\AppData\Roaming\WenYanTrans\api_keys.json`
+   
    ```json
    {
-     "model_name": "deepseek/deepseek-v3.2",
-     "api_endpoint": "https://openrouter.ai/api/v1/chat/completions",
-     "custom_param": {
-       "provider": {
-         "order": ["atlas-cloud/fp8", "novita/fp8", "deepinfra/fp4"],
-         "allow_fallbacks": true
+     "openrouter_kimi": "your-openrouter-api-key-here",
+     "openrouter_deepseek": "your-deepseek-api-key-here"
+   }
+   ```
+   
+   **Note**: You need an OpenRouter API key for Kimi model and a DeepSeek API key for DeepSeek model. Get free API keys from:
+   - OpenRouter: https://openrouter.ai
+   - DeepSeek: https://platform.deepseek.com
+   
+   b. **Model Presets Configuration**
+   
+   The `config.json` file in the project root defines available model presets:
+   
+   ```json
+   {
+     "active_preset": "openrouter_kimi",
+     "presets": {
+       "openrouter_kimi": {
+         "model_name": "moonshotai/kimi-k2-thinking",
+         "api_endpoint": "https://openrouter.ai/api/v1/chat/completions",
+         "custom_param": {
+           "provider": {
+             "order": ["chutes/int4", "deepinfra/fp4"],
+             "allow_fallbacks": true
+           },
+           "reasoning": {
+             "enabled": true
+           }
+         }
        },
-       "reasoning": {
-         "enabled": true
+       "openrouter_deepseek": {
+         "model_name": "deepseek-reasoner",
+         "api_endpoint": "https://api.deepseek.com/v1/chat/completions",
+         "custom_param": {}
        }
      }
    }
    ```
+   
+   c. **Model Selection in UI**
+   
+   The application now includes a model selector dropdown menu above the input box. Users can switch between:
+   - **月之暗面 Kimi (推理版)**: Kimi K2 Thinking via OpenRouter
+   - **DeepSeek V3.2 (推理版)**: DeepSeek Chat via official API
 
 5. **Run the application**
    ```bash
@@ -161,23 +201,39 @@ The tool follows a structured five-step analysis method:
 ## ⚙️ Configuration
 
 ### Environment Setup
-Create a `config.json` file in the project root:
+
+The application now supports multiple model presets configured in `config.json`:
 
 ```json
 {
-  "model_name": "deepseek/deepseek-v3.2",
-  "api_endpoint": "https://openrouter.ai/api/v1/chat/completions",
-  "custom_param": {
-    "provider": {
-      "order": ["atlas-cloud/fp8", "novita/fp8", "deepinfra/fp4"],
-      "allow_fallbacks": true
+  "active_preset": "openrouter_kimi",
+  "presets": {
+    "openrouter_kimi": {
+      "model_name": "moonshotai/kimi-k2-thinking",
+      "api_endpoint": "https://openrouter.ai/api/v1/chat/completions",
+      "custom_param": {
+        "provider": {
+          "order": ["chutes/int4", "deepinfra/fp4"],
+          "allow_fallbacks": true
+        },
+        "reasoning": {
+          "enabled": true
+        }
+      }
     },
-    "reasoning": {
-      "enabled": true
+    "openrouter_deepseek": {
+      "model_name": "deepseek-reasoner",
+      "api_endpoint": "https://api.deepseek.com/v1/chat/completions",
+      "custom_param": {}
     }
   }
 }
 ```
+
+**Key Fields**:
+- `active_preset`: Default preset ID to use on startup
+- `presets`: Dictionary of available model configurations
+- Each preset includes `model_name`, `api_endpoint`, and optional `custom_param`
 
 ### Custom Parameter Support
 The `custom_param` field allows you to add any custom parameters to the API request payload. This replaces the previous separate `provider` and `reasoning` fields. You can include any valid OpenRouter API parameters in the `custom_param` object, such as:
@@ -216,16 +272,18 @@ In this example, all parameters inside `custom_param` will be included in the AP
 
 ### Customization Options
 - **Port**: Modify `app.py` line 176 to change server port (default: 1201)
-- **Model**: Change `model_name` in `config.json` to use different AI models
-- **Concurrency**: Adjust `MAX_CONCURRENT_CALLS` in `static/js/main.js` line 4
-- **Retry Attempts**: Modify `MAX_RETRY_ATTEMPTS` in `static/js/main.js` line 5
+- **Model Presets**: Edit `config.json` to add, remove, or modify model presets
+- **Default Model**: Change `active_preset` in `config.json` to set default model
+- **API Keys**: Update `api_keys.json` with your API keys for different providers
+- **Concurrency**: Adjust `MAX_CONCURRENT_CALLS` in `static/js/modules/config.js`
+- **Retry Attempts**: Modify `MAX_RETRY_ATTEMPTS` in `static/js/modules/config.js`
 
 ## 📁 Project Structure
 
 ```
 WenYanTrans/
 ├── app.py                    # Flask application (main backend logic)
-├── config.json              # API configuration (OpenRouter credentials)
+├── config.json              # Model presets and API configuration
 ├── requirements.txt         # Python dependencies
 ├── README.md               # This file
 ├── favicon.ico             # Website favicon

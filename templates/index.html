@@ -22,6 +22,15 @@
                 <button id="paste-btn" class="text-btn">粘贴</button>
             </div>
             <input type="file" id="file-input" accept=".txt" style="display: none;">
+            
+            <div class="model-selector-row">
+                <label for="model-select">分析模型：</label>
+                <select id="model-select">
+                    <!-- 选项将由JavaScript动态填充 -->
+                </select>
+                <button id="model-settings-btn" class="text-btn" aria-label="管理模型设置" title="管理模型预设">⚙️ 设置</button>
+            </div>
+            
             <textarea id="text-input" placeholder="请粘贴您的文言文材料..."></textarea>
 
             <div id="status-message" style="color: #d93025; margin-top: 5px;"></div>
@@ -45,6 +54,74 @@
         <div id="output-area">
             <h2 id="output-title">切割结果：</h2>
             <div id="results-content"></div>
+        </div>
+    </div>
+
+    <!-- 模型管理模态框 -->
+    <div id="model-management-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="width: 600px; max-width: 90%; max-height: 80vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h2>模型预设管理</h2>
+                <button id="new-model-btn" class="text-btn" style="margin-left: auto; margin-right: 10px;">新建模型</button>
+                <button id="close-modal-btn" class="close-btn" aria-label="关闭">×</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-top: 0; color: var(--text-disabled);">拖拽模型名称可调整顺序，点击右侧编辑按钮可修改配置。</p>
+                <p style="margin-top: 0;">推荐使用经过验证的内置模型，避免效果差异。</p>
+                <ul id="model-list" class="model-list">
+                    <!-- 模型列表将动态填充 -->
+                </ul>
+            </div>
+            <div class="modal-footer">
+                <button id="save-order-btn" class="primary-btn" style="display: none;">保存顺序</button>
+                <button id="cancel-modal-btn" class="secondary-btn">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模型编辑模态框 -->
+    <div id="model-edit-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="width: 500px; max-width: 90%; max-height: 80vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h2 id="edit-modal-title">编辑模型配置</h2>
+                <button id="close-edit-modal-btn" class="close-btn" aria-label="关闭">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="model-edit-form">
+                    <input type="hidden" id="edit-model-id" value="">
+                    <div class="form-group">
+                        <label for="edit-display-name">模型名称：</label>
+                        <input type="text" id="edit-display-name" required>
+                        <small>显示给用户的名称（将自动生成内部标识符）</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-model-name">API模型标识符：</label>
+                        <input type="text" id="edit-model-name" required>
+                        <small>API使用的模型标识（如 moonshotai/kimi-k2-thinking）</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-api-endpoint">API 端点：</label>
+                        <input type="url" id="edit-api-endpoint" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-api-key">API 密钥：<span id="api-key-status"></span></label>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="password" id="edit-api-key" style="flex: 1;">
+                            <button type="button" id="clear-api-key-btn" class="text-btn" style="display: none;">清除密钥</button>
+                        </div>
+                        <small>留空则保持原密钥不变</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-custom-param">自定义参数（JSON）：</label>
+                        <textarea id="edit-custom-param" rows="4" placeholder='{"temperature": 0.7, "max_tokens": 2000}'></textarea>
+                        <small>可选，必须是有效的JSON对象</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button id="save-model-btn" class="primary-btn">保存</button>
+                <button id="cancel-edit-btn" class="secondary-btn">取消</button>
+            </div>
         </div>
     </div>
 
