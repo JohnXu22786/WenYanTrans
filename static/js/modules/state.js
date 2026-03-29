@@ -4,7 +4,7 @@
 
 const state = {
     // 运行状态
-    selectedModelPreset: 'openrouter_kimi', // 当前选定的模型预设ID
+    selectedModelPreset: '', // 当前选定的模型预设ID，从后端API获取
     segmentQueue: [],
     totalSegments: 0,
     segmentsCompleted: 0,
