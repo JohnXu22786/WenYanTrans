@@ -339,6 +339,10 @@ def get_presets():
         config = load_config()
         config_data = config['_raw_config']
         
+        logger.info(f"BUILTIN_PRESETS: {BUILTIN_PRESETS}")
+        logger.info(f"config_data presets keys: {list(config_data['presets'].keys())}")
+        logger.info(f"active_preset: {config_data.get('active_preset', 'default')}")
+        
         presets = config_data['presets']
         active_preset = config_data.get('active_preset', 'default')
         
@@ -362,9 +366,11 @@ def get_presets():
         
         # 按照BUILTIN_PRESETS的顺序对内置预设排序
         builtin_presets.sort(key=lambda x: BUILTIN_PRESETS.index(x['id']) if x['id'] in BUILTIN_PRESETS else len(BUILTIN_PRESETS))
+        logger.info(f"Sorted builtin_presets: {[p['id'] for p in builtin_presets]}")
         
         # 用户预设保持原有顺序（字典插入顺序）
         preset_list = builtin_presets + user_presets
+        logger.info(f"Final preset_list order: {[p['id'] for p in preset_list]}")
         
         return jsonify({
             'success': True,
