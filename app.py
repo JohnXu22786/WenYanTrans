@@ -360,6 +360,7 @@ def create_preset():
 def update_preset(preset_id):
     """更新现有模型预设"""
     try:
+        global config
         data = request.json
         if not data:
             return jsonify({'success': False, 'error': 'Invalid request data'}), 400
@@ -370,9 +371,33 @@ def update_preset(preset_id):
         # 检查是否为只读预设（openrouter_kimi 和 deepseek）
         readonly_presets = ['openrouter_kimi', 'deepseek']
         if preset_id in readonly_presets:
-            return jsonify({'success': False, 'error': f'预设 "{preset_id}" 是只读的，不可编辑'}), 403
+            # 只读预设只允许更新api_key和custom_param字段
+            preset = config_data['presets'][preset_id]
+            updated = False
+            updated_fields = []
+            
+            if 'api_key' in data:
+                preset['api_key'] = data['api_key']
+                updated = True
+                updated_fields.append('API密钥')
+            
+            if 'custom_param' in data:
+                preset['custom_param'] = data['custom_param']
+                updated = True
+                updated_fields.append('自定义参数')
+            
+            if updated:
+                # Save configuration
+                save_config(config_data)
+                # Update global config reference
+                config = load_config()
+                fields_str = '、'.join(updated_fields)
+                return jsonify({'success': True, 'message': f'Preset "{preset_id}" updated ({fields_str})'})
+            else:
+                # 如果没有提供可更新的字段，则无需更新
+                return jsonify({'success': True, 'message': 'No updatable fields provided, preset unchanged'})
         
-        # Update preset fields
+        # Update preset fields for non-readonly presets
         preset = config_data['presets'][preset_id]
         if 'name' in data:
             preset['name'] = data['name']
@@ -389,7 +414,6 @@ def update_preset(preset_id):
         save_config(config_data)
         
         # Update global config reference
-        global config
         config = load_config()
         
         return jsonify({'success': True, 'message': f'Preset "{preset_id}" updated successfully'})

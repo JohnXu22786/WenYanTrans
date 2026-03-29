@@ -1,6 +1,8 @@
 // 模型管理模块
 import { fetchPresets } from './config.js';
 
+const READONLY_PRESETS = ['openrouter_kimi', 'deepseek'];
+
 /**
  * 从显示名称生成预设ID
  */
@@ -135,6 +137,15 @@ function openEditModal(model = null) {
         editCustomParamInput.value = '';
     }
     
+    // 如果是只读预设，只允许编辑API密钥和自定义参数
+    const isReadonly = model && READONLY_PRESETS.includes(model.id);
+    editDisplayNameInput.disabled = isReadonly;
+    editModelNameInput.disabled = isReadonly;
+    editApiEndpointInput.disabled = isReadonly;
+    // 自定义参数和API密钥字段保持可编辑
+    editCustomParamInput.disabled = false;
+    editApiKeyInput.disabled = false;
+    
     editModal.style.display = 'flex';
 }
 
@@ -172,13 +183,10 @@ async function loadModelList() {
 function renderModelList() {
     modelList.innerHTML = '';
     
-    // 只读预设列表
-    const readonlyPresets = ['openrouter_kimi', 'deepseek'];
-    
     currentModels.forEach(model => {
         const li = document.createElement('li');
         li.dataset.id = model.id;
-        li.draggable = !readonlyPresets.includes(model.id); // 只读预设不可拖拽
+        li.draggable = !READONLY_PRESETS.includes(model.id); // 只读预设不可拖拽
         
         // 模型名称
         const nameSpan = document.createElement('span');
@@ -190,24 +198,18 @@ function renderModelList() {
         const actionsDiv = document.createElement('div');
         actionsDiv.className = 'model-actions';
         
-        // 只读预设不显示编辑和删除按钮，显示“只读”标签
-        if (readonlyPresets.includes(model.id)) {
-            const readonlySpan = document.createElement('span');
-            readonlySpan.className = 'readonly-label';
-            readonlySpan.textContent = '只读';
-            readonlySpan.style.color = '#666';
-            readonlySpan.style.fontSize = '0.9em';
-            readonlySpan.style.marginLeft = '10px';
-            actionsDiv.appendChild(readonlySpan);
-        } else {
-            const editBtn = document.createElement('button');
-            editBtn.className = 'edit-btn';
-            editBtn.textContent = '编辑';
-            editBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                loadModelDetail(model.id);
-            });
-            
+        // 编辑按钮（所有预设都显示）
+        const editBtn = document.createElement('button');
+        editBtn.className = 'edit-btn';
+        editBtn.textContent = '编辑';
+        editBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            loadModelDetail(model.id);
+        });
+        actionsDiv.appendChild(editBtn);
+        
+        // 只读预设不显示删除按钮
+        if (!READONLY_PRESETS.includes(model.id)) {
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'delete-btn';
             deleteBtn.textContent = '删除';
@@ -215,8 +217,6 @@ function renderModelList() {
                 e.stopPropagation();
                 deleteModel(model.id);
             });
-            
-            actionsDiv.appendChild(editBtn);
             actionsDiv.appendChild(deleteBtn);
         }
         

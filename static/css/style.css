@@ -849,6 +849,14 @@ button:disabled {
     box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
 }
 
+.form-group input:disabled,
+.form-group textarea:disabled {
+    background-color: var(--btn-disabled);
+    color: var(--text-disabled);
+    cursor: not-allowed;
+    opacity: 0.8;
+}
+
 .form-group small {
     display: block;
     margin-top: 4px;
