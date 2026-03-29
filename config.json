@@ -1,16 +1,16 @@
 {
-  "active_preset": "openrouter_kimi",
+  "active_preset": "deepseek",
   "presets": {
-    "openrouter_kimi": {
-      "name": "Kimi K2 Thinking | OpenRouter",
-      "model_name": "moonshotai/kimi-k2-thinking",
-      "api_endpoint": "https://openrouter.ai/api/v1/chat/completions",
-      "custom_param": {}
-    },
     "deepseek": {
-      "name": "DeepSeek Reasoner | Deepseek",
+      "name": "（建议）DeepSeek Reasoner | Deepseek",
       "model_name": "deepseek-reasoner",
       "api_endpoint": "https://api.deepseek.com/v1/chat/completions",
+      "custom_param": {}
+    },
+    "openrouter_kimi": {
+      "name": "（建议）Kimi K2 Thinking | OpenRouter",
+      "model_name": "moonshotai/kimi-k2-thinking",
+      "api_endpoint": "https://openrouter.ai/api/v1/chat/completions",
       "custom_param": {}
     }
   }

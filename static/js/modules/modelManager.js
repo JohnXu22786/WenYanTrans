@@ -1,6 +1,7 @@
 // 模型管理模块
 import { fetchPresets } from './config.js';
 
+// 内置模型ID（向后兼容，优先使用API返回的is_builtin字段）
 const READONLY_PRESETS = ['openrouter_kimi', 'deepseek'];
 
 /**
@@ -146,10 +147,10 @@ function openEditModal(model = null) {
     }
     
     // 如果是只读预设，只允许编辑API密钥和自定义参数
-    const isReadonly = model && READONLY_PRESETS.includes(model.id);
-    editDisplayNameInput.disabled = isReadonly;
-    editModelNameInput.disabled = isReadonly;
-    editApiEndpointInput.disabled = isReadonly;
+    const isBuiltin = model && (model.is_builtin || READONLY_PRESETS.includes(model.id));
+    editDisplayNameInput.disabled = isBuiltin;
+    editModelNameInput.disabled = isBuiltin;
+    editApiEndpointInput.disabled = isBuiltin;
     // 自定义参数和API密钥字段保持可编辑
     editCustomParamInput.disabled = false;
     editApiKeyInput.disabled = false;
@@ -240,12 +241,19 @@ function renderModelList() {
     currentModels.forEach(model => {
         const li = document.createElement('li');
         li.dataset.id = model.id;
-        li.draggable = !READONLY_PRESETS.includes(model.id); // 只读预设不可拖拽
+        const isBuiltin = model.is_builtin || READONLY_PRESETS.includes(model.id);
+        li.draggable = !isBuiltin; // 内置预设不可拖拽
+        if (isBuiltin) {
+            li.classList.add('builtin-model');
+        }
         
         // 模型名称
         const nameSpan = document.createElement('span');
         nameSpan.className = 'model-name';
         nameSpan.textContent = model.name;
+        if (isBuiltin) {
+            nameSpan.classList.add('builtin-name');
+        }
         li.appendChild(nameSpan);
         
         // 操作按钮
@@ -262,8 +270,8 @@ function renderModelList() {
         });
         actionsDiv.appendChild(editBtn);
         
-        // 只读预设不显示删除按钮
-        if (!READONLY_PRESETS.includes(model.id)) {
+        // 内置预设不显示删除按钮
+        if (!isBuiltin) {
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'delete-btn';
             deleteBtn.textContent = '删除';
@@ -439,6 +447,12 @@ function initDragAndDrop() {
         const li = e.target.closest('li');
         if (!li) return;
         
+        // 如果是内置模型，阻止拖拽
+        if (li.classList.contains('builtin-model')) {
+            e.preventDefault();
+            return;
+        }
+        
         draggingItem = li;
         // 设置拖动效果
         e.dataTransfer.effectAllowed = 'move';
@@ -519,17 +533,18 @@ function initDragAndDrop() {
  * 获取拖拽后的元素位置
  */
 function getDragAfterElement(container, y) {
-    const draggableElements = [...container.querySelectorAll('li:not(.dragging)')];
+    // 获取所有非拖拽中的元素
+    const allElements = [...container.querySelectorAll('li:not(.dragging)')];
     
     // 如果没有可放置的元素，返回 null
-    if (draggableElements.length === 0) {
+    if (allElements.length === 0) {
         return null;
     }
     
     let closestBefore = { offset: Number.NEGATIVE_INFINITY, element: null };
     let closestAfter = { offset: Number.POSITIVE_INFINITY, element: null };
     
-    for (const child of draggableElements) {
+    for (const child of allElements) {
         const box = child.getBoundingClientRect();
         const offset = y - box.top - box.height / 2;
         
@@ -548,17 +563,32 @@ function getDragAfterElement(container, y) {
     
     // 优先选择上半部分的元素（插入到之前）
     if (closestBefore.element) {
-        return closestBefore.element;
+        // 如果目标元素是内置模型，不允许插入到它之前
+        // 找到第一个非内置模型元素作为插入点
+        let targetElement = closestBefore.element;
+        while (targetElement && targetElement.classList.contains('builtin-model')) {
+            targetElement = targetElement.nextElementSibling;
+        }
+        return targetElement;
     }
     
     // 如果没有上半部分的元素，则选择下半部分的元素
     if (closestAfter.element) {
-        // 如果目标元素不是最后一个，则返回它的下一个兄弟元素（插入到之后）
-        const nextSibling = closestAfter.element.nextElementSibling;
-        if (nextSibling) {
-            return nextSibling;
+        // 如果目标元素是内置模型，不允许插入到它之后（因为会插入到内置模型之间）
+        // 找到下一个非内置模型元素作为插入点
+        let targetElement = closestAfter.element;
+        if (targetElement.classList.contains('builtin-model')) {
+            // 如果是内置模型，找到它之后的下一个非内置模型
+            targetElement = targetElement.nextElementSibling;
+            while (targetElement && targetElement.classList.contains('builtin-model')) {
+                targetElement = targetElement.nextElementSibling;
+            }
+        }
+        
+        if (targetElement) {
+            return targetElement;
         } else {
-            // 如果是最后一个元素，则返回 null 表示插入到末尾
+            // 如果没有找到非内置模型元素，则插入到末尾
             return null;
         }
     }

@@ -178,6 +178,9 @@ SYSTEM_PROMPT = """你必须扮演一位极具耐心的"文言文侦探导师"�
 
 **核心原则**：第2步是"精准狙击"而非"地毯式轰炸"，70%精力用于疏通长句逻辑，30%用于攻克真难点。必须让初学者看见"如何从懂字词到懂句子"的破案路径。"""
 
+# Built-in presets that cannot be reordered and should appear at the top
+BUILTIN_PRESETS = ['deepseek', 'openrouter_kimi']
+
 @app.route('/')
 def index():
     """Render main page"""
@@ -292,16 +295,29 @@ def get_presets():
         presets = config_data['presets']
         active_preset = config_data.get('active_preset', 'default')
         
-        # 返回预设ID列表和当前活动预设（按照配置中的顺序）
-        preset_list = []
+        # 分离内置预设和用户预设
+        builtin_presets = []
+        user_presets = []
+        
         for preset_id, preset_config in presets.items():
-            preset_list.append({
+            preset_info = {
                 'id': preset_id,
-                'name': preset_config.get('name', preset_id),  # 显示名称，默认为ID
+                'name': preset_config.get('name', preset_id),
                 'model_name': preset_config.get('model_name', ''),
                 'api_endpoint': preset_config.get('api_endpoint', ''),
-                'is_active': preset_id == active_preset
-            })
+                'is_active': preset_id == active_preset,
+                'is_builtin': preset_id in BUILTIN_PRESETS
+            }
+            if preset_id in BUILTIN_PRESETS:
+                builtin_presets.append(preset_info)
+            else:
+                user_presets.append(preset_info)
+        
+        # 按照BUILTIN_PRESETS的顺序对内置预设排序
+        builtin_presets.sort(key=lambda x: BUILTIN_PRESETS.index(x['id']) if x['id'] in BUILTIN_PRESETS else len(BUILTIN_PRESETS))
+        
+        # 用户预设保持原有顺序（字典插入顺序）
+        preset_list = builtin_presets + user_presets
         
         return jsonify({
             'success': True,
@@ -471,12 +487,54 @@ def reorder_presets():
             if preset_id not in config_data['presets']:
                 return jsonify({'success': False, 'error': f'Preset "{preset_id}" not found'}), 400
         
-        # Reorder presets by creating a new dict with the specified order
+        # Validate that built-in presets are in correct position and order
+        # Find positions of built-in presets in the order list
+        builtin_positions = []
+        for i, preset_id in enumerate(order):
+            if preset_id in BUILTIN_PRESETS:
+                builtin_positions.append((i, preset_id))
+        
+        # Find positions of user presets in the order list
+        user_positions = []
+        for i, preset_id in enumerate(order):
+            if preset_id not in BUILTIN_PRESETS:
+                user_positions.append((i, preset_id))
+        
+        # Check 1: All built-in presets must come before all user presets
+        if builtin_positions and user_positions:
+            last_builtin_pos = max(pos for pos, _ in builtin_positions)
+            first_user_pos = min(pos for pos, _ in user_positions)
+            if last_builtin_pos >= first_user_pos:
+                return jsonify({'success': False, 'error': 'Built-in presets cannot be moved after user presets'}), 400
+        
+        # Check 2: Built-in presets must maintain their relative order as defined in BUILTIN_PRESETS
+        builtin_ids_in_order = [pid for _, pid in sorted(builtin_positions)]
+        expected_builtin_order = [pid for pid in BUILTIN_PRESETS if pid in config_data['presets']]
+        if builtin_ids_in_order != expected_builtin_order:
+            return jsonify({'success': False, 'error': 'Built-in presets must maintain their defined order'}), 400
+        
+        # Filter out built-in presets from the order list
+        user_order = [pid for pid in order if pid not in BUILTIN_PRESETS]
+        builtin_order = [pid for pid in BUILTIN_PRESETS if pid in config_data['presets']]
+        
+        # Ensure all user presets are included in the order
+        user_preset_ids = [pid for pid in config_data['presets'] if pid not in BUILTIN_PRESETS]
+        if set(user_order) != set(user_preset_ids):
+            missing = set(user_preset_ids) - set(user_order)
+            extra = set(user_order) - set(user_preset_ids)
+            if missing:
+                return jsonify({'success': False, 'error': f'Missing user presets in order: {missing}'}), 400
+            if extra:
+                return jsonify({'success': False, 'error': f'Unknown presets in order: {extra}'}), 400
+        
+        # Reorder presets: built-in presets first (in BUILTIN_PRESETS order), then user presets (in user_order)
         new_presets = {}
-        for preset_id in order:
+        for preset_id in builtin_order:
+            new_presets[preset_id] = config_data['presets'][preset_id]
+        for preset_id in user_order:
             new_presets[preset_id] = config_data['presets'][preset_id]
         
-        # Add any missing presets (should not happen if order includes all)
+        # Add any missing presets (should not happen)
         for preset_id, preset in config_data['presets'].items():
             if preset_id not in new_presets:
                 new_presets[preset_id] = preset
