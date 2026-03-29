@@ -45,6 +45,9 @@ let editApiEndpointInput;
 let editApiKeyInput;
 let editCustomParamInput;
 let editModalTitle;
+let apiKeyStatusSpan;
+let clearApiKeyBtn;
+let isApiKeyCleared = false;
 
 // 当前模型列表数据
 let currentModels = [];
@@ -73,6 +76,8 @@ export function initModelManagement() {
     editApiKeyInput = document.getElementById('edit-api-key');
     editCustomParamInput = document.getElementById('edit-custom-param');
     editModalTitle = document.getElementById('edit-modal-title');
+    apiKeyStatusSpan = document.getElementById('api-key-status');
+    clearApiKeyBtn = document.getElementById('clear-api-key-btn');
     
     // 绑定事件监听器
     const settingsBtn = document.getElementById('model-settings-btn');
@@ -87,6 +92,8 @@ export function initModelManagement() {
     cancelEditBtn.addEventListener('click', closeEditModal);
     saveOrderBtn.addEventListener('click', saveModelOrder);
     saveModelBtn.addEventListener('click', saveModel);
+    clearApiKeyBtn.addEventListener('click', clearApiKey);
+    editApiKeyInput.addEventListener('input', handleApiKeyInput);
     
     // 初始化拖拽排序
     initDragAndDrop();
@@ -117,6 +124,7 @@ function closeModal() {
  * 打开模型编辑模态框
  */
 function openEditModal(model = null) {
+    isApiKeyCleared = false;
     if (model) {
         // 编辑现有模型
         editModalTitle.textContent = '编辑模型配置';
@@ -146,7 +154,53 @@ function openEditModal(model = null) {
     editCustomParamInput.disabled = false;
     editApiKeyInput.disabled = false;
     
+    // 更新API密钥状态显示
+    updateApiKeyStatus(model);
+    
     editModal.style.display = 'flex';
+}
+
+/**
+ * 更新API密钥状态显示
+ */
+function updateApiKeyStatus(model = null) {
+    const hasKey = model && model.api_key && model.api_key.trim() !== '';
+    if (apiKeyStatusSpan) {
+        apiKeyStatusSpan.textContent = hasKey ? '（已设置）' : '（未设置）';
+        apiKeyStatusSpan.style.color = hasKey ? '#188038' : '#5f6368';
+        apiKeyStatusSpan.style.fontWeight = hasKey ? '500' : 'normal';
+        apiKeyStatusSpan.style.marginLeft = '4px';
+    }
+    if (clearApiKeyBtn) {
+        clearApiKeyBtn.style.display = hasKey ? 'inline-block' : 'none';
+    }
+}
+
+/**
+ * 清除API密钥
+ */
+function clearApiKey() {
+    editApiKeyInput.value = '';
+    isApiKeyCleared = true;
+    updateApiKeyStatus(); // 这将把状态更新为未设置并隐藏清除按钮
+}
+
+/**
+ * 处理API密钥输入变化
+ */
+function handleApiKeyInput() {
+    const hasValue = editApiKeyInput.value.trim() !== '';
+    if (hasValue) {
+        isApiKeyCleared = false;
+    }
+    if (apiKeyStatusSpan) {
+        apiKeyStatusSpan.textContent = hasValue ? '（已输入）' : '（未设置）';
+        apiKeyStatusSpan.style.color = hasValue ? '#188038' : '#5f6368';
+        apiKeyStatusSpan.style.fontWeight = hasValue ? '500' : 'normal';
+    }
+    if (clearApiKeyBtn) {
+        clearApiKeyBtn.style.display = hasValue ? 'inline-block' : 'none';
+    }
 }
 
 /**
@@ -289,9 +343,11 @@ async function saveModel() {
         custom_param: customParam
     };
     
-    // 如果提供了新密钥，则包含它
+    // 如果提供了新密钥，则包含它；如果用户点击了清除按钮，则包含空字符串以清除密钥
     if (apiKey) {
         modelData.api_key = apiKey;
+    } else if (isApiKeyCleared) {
+        modelData.api_key = '';
     }
     
     // 判断是新建还是编辑

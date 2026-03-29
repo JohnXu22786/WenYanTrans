@@ -103,8 +103,11 @@
                         <input type="url" id="edit-api-endpoint" required>
                     </div>
                     <div class="form-group">
-                        <label for="edit-api-key">API 密钥：</label>
-                        <input type="password" id="edit-api-key">
+                        <label for="edit-api-key">API 密钥：<span id="api-key-status"></span></label>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="password" id="edit-api-key" style="flex: 1;">
+                            <button type="button" id="clear-api-key-btn" class="text-btn" style="display: none;">清除密钥</button>
+                        </div>
                         <small>留空则保持原密钥不变</small>
                     </div>
                     <div class="form-group">
