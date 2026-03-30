@@ -32,6 +32,9 @@ const state = {
     paragraphToGroup: new Map(),       // Map<paragraphIndex, groupId>
     nextGroupId: 100,                  // 下一个组ID（避免与段落索引冲突）
 
+    // 自动建议合并
+    autoSuggestCandidates: [], // Array<{ shortGroupId, targetGroupId, direction }>
+
     // 新增方法
     initializeMergeState() {
         // 初始化合并状态，在showPreview开始时调用
@@ -42,6 +45,7 @@ const state = {
             this.paragraphToGroup.set(seg.index, seg.index);
         });
         this.nextGroupId = 100;
+        this.autoSuggestCandidates = [];
     },
 
     resetMergeState() {
@@ -50,6 +54,7 @@ const state = {
         this.rootGroupIds = [];
         this.paragraphToGroup.clear();
         this.nextGroupId = 100;
+        this.autoSuggestCandidates = [];
     }
 };
 

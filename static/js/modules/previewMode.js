@@ -7,6 +7,59 @@ import state from './state.js';
 import { resetUIForNewInput } from './uiRenderer.js';
 import { splitText } from './textProcessor.js';
 
+// 检测短段落自动合并建议
+function detectAutoSuggestCandidates() {
+    state.autoSuggestCandidates = [];
+    const shortThreshold = 50; // 字符数阈值
+
+    for (let i = 0; i < state.rootGroupIds.length; i++) {
+        const groupId = state.rootGroupIds[i];
+        const group = getGroupData(groupId);
+        if (!group) continue;
+
+        // 只考虑未删除的单个段落
+        if (group.indices.length !== 1) continue;
+        const hasDeleted = group.indices.some(idx => state.segmentsToRemove.has(idx));
+        if (hasDeleted) continue;
+
+        const segment = group.segments[0];
+        if (segment.segment.length < shortThreshold) {
+            // 寻找相邻的未删除组作为合并目标
+            let targetGroupId = null;
+            let direction = '';
+            
+            // 优先考虑下一组
+            if (i < state.rootGroupIds.length - 1) {
+                const nextGroupId = state.rootGroupIds[i + 1];
+                const nextGroup = getGroupData(nextGroupId);
+                const nextHasDeleted = nextGroup && nextGroup.indices.some(idx => state.segmentsToRemove.has(idx));
+                if (nextGroup && !nextHasDeleted) {
+                    targetGroupId = nextGroupId;
+                    direction = 'next';
+                }
+            }
+            // 如果没有下一组，考虑上一组
+            if (targetGroupId === null && i > 0) {
+                const prevGroupId = state.rootGroupIds[i - 1];
+                const prevGroup = getGroupData(prevGroupId);
+                const prevHasDeleted = prevGroup && prevGroup.indices.some(idx => state.segmentsToRemove.has(idx));
+                if (prevGroup && !prevHasDeleted) {
+                    targetGroupId = prevGroupId;
+                    direction = 'prev';
+                }
+            }
+
+            if (targetGroupId !== null) {
+                state.autoSuggestCandidates.push({
+                    shortGroupId: groupId,
+                    targetGroupId: targetGroupId,
+                    direction: direction
+                });
+            }
+        }
+    }
+}
+
 export function showPreview(text) {
     resetUIForNewInput();
     state.originalTextForPreview = text;
@@ -19,6 +72,9 @@ export function showPreview(text) {
 
     // 初始化合并状态
     state.initializeMergeState();
+
+    // 检测自动合并建议
+    detectAutoSuggestCandidates();
 
     // 渲染预览组
     renderPreviewGroups();
@@ -142,6 +198,10 @@ function splitGroup(groupId) {
 function renderPreviewGroups() {
     els.results.innerHTML = '';
 
+    // 检测自动合并建议
+    detectAutoSuggestCandidates();
+    const candidateMap = new Map(state.autoSuggestCandidates.map(c => [c.shortGroupId, c]));
+
     // 添加标题和提示
     const previewTitle = document.createElement('h3');
     const visibleCount = state.rootGroupIds.filter(id => {
@@ -155,7 +215,7 @@ function renderPreviewGroups() {
     els.results.appendChild(previewTitle);
 
     const tip = document.createElement('p');
-    tip.textContent = '提示：使用"与下一组合并"按钮合并相邻段落，合并后的组可以使用"拆分"按钮恢复';
+    tip.textContent = '提示：使用"与下一组合并"按钮合并相邻段落，合并后的组可以使用"拆分"按钮恢复。短段落（<50字符）会高亮显示并建议自动合并。';
     tip.style.fontSize = '0.9em';
     tip.style.color = 'var(--text-disabled)';
     tip.style.marginTop = '10px';
@@ -177,6 +237,10 @@ function renderPreviewGroups() {
         segmentDiv.className = 'segment-container';
         if (group.indices.length > 1) {
             segmentDiv.classList.add('merged-group-container');
+        }
+        // 如果是短段落建议合并，添加高亮样式
+        if (candidateMap.has(groupId)) {
+            segmentDiv.classList.add('short-paragraph-suggestion');
         }
         segmentDiv.setAttribute('data-group-id', group.id);
 
@@ -232,6 +296,16 @@ function renderPreviewGroups() {
             deleteSegment(group.indices[0], segmentDiv);
         };
         buttonContainer.appendChild(deleteBtn);
+
+        // 自动合并建议按钮（如果是短段落建议合并）
+        if (candidateMap.has(groupId)) {
+            const candidate = candidateMap.get(groupId);
+            const autoMergeBtn = document.createElement('button');
+            autoMergeBtn.className = 'auto-merge-btn';
+            autoMergeBtn.textContent = candidate.direction === 'next' ? '自动合并到下一段' : '自动合并到上一段';
+            autoMergeBtn.onclick = () => handleAutoMergeClick(groupId, candidate.targetGroupId);
+            buttonContainer.appendChild(autoMergeBtn);
+        }
 
         headerDiv.appendChild(buttonContainer);
         segmentDiv.appendChild(headerDiv);
@@ -292,6 +366,11 @@ function handleMergeClick(groupId) {
 
 function handleSplitClick(groupId) {
     splitGroup(groupId);
+    renderPreviewGroups(); // 重新渲染
+}
+
+function handleAutoMergeClick(shortGroupId, targetGroupId) {
+    mergeAdjacentGroups(shortGroupId, targetGroupId);
     renderPreviewGroups(); // 重新渲染
 }
 
