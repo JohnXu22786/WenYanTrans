@@ -537,6 +537,41 @@ button:disabled {
     filter: brightness(0.9);
 }
 
+/* 自动合并建议按钮样式 */
+.auto-merge-btn {
+    background-color: #9b59b6; /* 紫色表示建议 */
+    color: white;
+    border: none;
+    padding: 4px 12px;
+    font-size: 0.85em;
+    margin-left: 10px;
+    border-radius: 12px;
+    cursor: pointer;
+}
+
+.auto-merge-btn:hover:not(:disabled) {
+    filter: brightness(0.9);
+}
+
+.auto-merge-btn:disabled {
+    background-color: var(--btn-disabled);
+    color: var(--text-disabled);
+}
+
+/* 短段落建议容器样式 */
+.short-paragraph-suggestion {
+    border-left: 4px solid #9b59b6;
+    padding-left: 8px;
+    background-color: rgba(155, 89, 182, 0.05);
+}
+
+/* 自动合并建议文本提示样式 */
+.auto-merge-suggestion {
+    color: #9b59b6;
+    font-size: 0.9em;
+    margin-right: 8px;
+}
+
 /* 合并组容器样式 */
 .merged-group-container {
     border: 2px solid var(--primary-color);

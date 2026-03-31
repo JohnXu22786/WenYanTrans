@@ -7,6 +7,96 @@ import state from './state.js';
 import { resetUIForNewInput } from './uiRenderer.js';
 import { splitText } from './textProcessor.js';
 
+// 检测短段落自动合并建议
+function detectAutoSuggestCandidates() {
+    state.autoSuggestCandidates = [];
+    const shortThreshold = 80; // 字符数阈值
+
+    // 计算组的总长度
+    function totalLength(group) {
+        return group.segments.reduce((sum, seg) => sum + seg.segment.length, 0);
+    }
+
+    for (let i = 0; i < state.rootGroupIds.length; i++) {
+        const groupId = state.rootGroupIds[i];
+        const group = getGroupData(groupId);
+        if (!group) continue;
+
+        // 只考虑未删除的单个段落
+        if (group.indices.length !== 1) continue;
+        const hasDeleted = group.indices.some(idx => state.segmentsToRemove.has(idx));
+        if (hasDeleted) continue;
+
+        const segment = group.segments[0];
+        if (segment.segment.length < shortThreshold) {
+            // 寻找相邻的未删除组作为合并目标（跳过短段落和已删除段落）
+            let targetGroupId = null;
+            let direction = '';
+            
+            // 向前扫描寻找长段落
+            let prevCandidate = null;
+            for (let j = i - 1; j >= 0; j--) {
+                const candGroupId = state.rootGroupIds[j];
+                const candGroup = getGroupData(candGroupId);
+                if (!candGroup) continue;
+                const candHasDeleted = candGroup.indices.some(idx => state.segmentsToRemove.has(idx));
+                if (candHasDeleted) continue;
+                // 检查长度是否达标
+                if (totalLength(candGroup) >= shortThreshold) {
+                    prevCandidate = {
+                        groupId: candGroupId,
+                        length: totalLength(candGroup)
+                    };
+                    break;
+                }
+                // 如果遇到短段落，继续扫描（跳过）
+            }
+            
+            // 向后扫描寻找长段落
+            let nextCandidate = null;
+            for (let j = i + 1; j < state.rootGroupIds.length; j++) {
+                const candGroupId = state.rootGroupIds[j];
+                const candGroup = getGroupData(candGroupId);
+                if (!candGroup) continue;
+                const candHasDeleted = candGroup.indices.some(idx => state.segmentsToRemove.has(idx));
+                if (candHasDeleted) continue;
+                if (totalLength(candGroup) >= shortThreshold) {
+                    nextCandidate = {
+                        groupId: candGroupId,
+                        length: totalLength(candGroup)
+                    };
+                    break;
+                }
+            }
+            
+            // 选择较短的相邻段落作为目标
+            if (prevCandidate && nextCandidate) {
+                if (prevCandidate.length <= nextCandidate.length) {
+                    targetGroupId = prevCandidate.groupId;
+                    direction = 'prev';
+                } else {
+                    targetGroupId = nextCandidate.groupId;
+                    direction = 'next';
+                }
+            } else if (prevCandidate) {
+                targetGroupId = prevCandidate.groupId;
+                direction = 'prev';
+            } else if (nextCandidate) {
+                targetGroupId = nextCandidate.groupId;
+                direction = 'next';
+            }
+
+            if (targetGroupId !== null) {
+                state.autoSuggestCandidates.push({
+                    shortGroupId: groupId,
+                    targetGroupId: targetGroupId,
+                    direction: direction
+                });
+            }
+        }
+    }
+}
+
 export function showPreview(text) {
     resetUIForNewInput();
     state.originalTextForPreview = text;
@@ -19,6 +109,9 @@ export function showPreview(text) {
 
     // 初始化合并状态
     state.initializeMergeState();
+
+    // 检测自动合并建议
+    detectAutoSuggestCandidates();
 
     // 渲染预览组
     renderPreviewGroups();
@@ -142,6 +235,10 @@ function splitGroup(groupId) {
 function renderPreviewGroups() {
     els.results.innerHTML = '';
 
+    // 检测自动合并建议
+    detectAutoSuggestCandidates();
+    const candidateMap = new Map(state.autoSuggestCandidates.map(c => [c.shortGroupId, c]));
+
     // 添加标题和提示
     const previewTitle = document.createElement('h3');
     const visibleCount = state.rootGroupIds.filter(id => {
@@ -155,7 +252,7 @@ function renderPreviewGroups() {
     els.results.appendChild(previewTitle);
 
     const tip = document.createElement('p');
-    tip.textContent = '提示：使用"与下一组合并"按钮合并相邻段落，合并后的组可以使用"拆分"按钮恢复';
+    tip.textContent = '提示：使用"与下一组合并"按钮合并相邻段落，合并后的组可以使用"拆分"按钮恢复。短段落（<50字符）会高亮显示并建议自动合并。';
     tip.style.fontSize = '0.9em';
     tip.style.color = 'var(--text-disabled)';
     tip.style.marginTop = '10px';
@@ -177,6 +274,10 @@ function renderPreviewGroups() {
         segmentDiv.className = 'segment-container';
         if (group.indices.length > 1) {
             segmentDiv.classList.add('merged-group-container');
+        }
+        // 如果是短段落建议合并，添加高亮样式
+        if (candidateMap.has(groupId)) {
+            segmentDiv.classList.add('short-paragraph-suggestion');
         }
         segmentDiv.setAttribute('data-group-id', group.id);
 
@@ -200,6 +301,15 @@ function renderPreviewGroups() {
         buttonContainer.style.alignItems = 'center';
         buttonContainer.style.flexWrap = 'wrap';
         buttonContainer.style.gap = '8px';
+
+        // 自动合并建议文本提示（如果是短段落建议合并）
+        if (candidateMap.has(groupId)) {
+            const candidate = candidateMap.get(groupId);
+            const suggestionText = document.createElement('span');
+            suggestionText.className = 'auto-merge-suggestion';
+            suggestionText.textContent = candidate.direction === 'next' ? '建议合并到下一段' : '建议合并到上一段';
+            buttonContainer.appendChild(suggestionText);
+        }
 
         // 与下一组合并按钮（如果不是最后一个且下一组未被删除）
         if (i < state.rootGroupIds.length - 1) {
@@ -292,6 +402,11 @@ function handleMergeClick(groupId) {
 
 function handleSplitClick(groupId) {
     splitGroup(groupId);
+    renderPreviewGroups(); // 重新渲染
+}
+
+function handleAutoMergeClick(shortGroupId, targetGroupId) {
+    mergeAdjacentGroups(shortGroupId, targetGroupId);
     renderPreviewGroups(); // 重新渲染
 }
 
