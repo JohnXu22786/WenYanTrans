@@ -565,6 +565,13 @@ button:disabled {
     background-color: rgba(155, 89, 182, 0.05);
 }
 
+/* 自动合并建议文本提示样式 */
+.auto-merge-suggestion {
+    color: #9b59b6;
+    font-size: 0.9em;
+    margin-right: 8px;
+}
+
 /* 合并组容器样式 */
 .merged-group-container {
     border: 2px solid var(--primary-color);

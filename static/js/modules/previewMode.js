@@ -10,7 +10,12 @@ import { splitText } from './textProcessor.js';
 // 检测短段落自动合并建议
 function detectAutoSuggestCandidates() {
     state.autoSuggestCandidates = [];
-    const shortThreshold = 50; // 字符数阈值
+    const shortThreshold = 80; // 字符数阈值
+
+    // 计算组的总长度
+    function totalLength(group) {
+        return group.segments.reduce((sum, seg) => sum + seg.segment.length, 0);
+    }
 
     for (let i = 0; i < state.rootGroupIds.length; i++) {
         const groupId = state.rootGroupIds[i];
@@ -24,29 +29,61 @@ function detectAutoSuggestCandidates() {
 
         const segment = group.segments[0];
         if (segment.segment.length < shortThreshold) {
-            // 寻找相邻的未删除组作为合并目标
+            // 寻找相邻的未删除组作为合并目标（跳过短段落和已删除段落）
             let targetGroupId = null;
             let direction = '';
             
-            // 优先考虑下一组
-            if (i < state.rootGroupIds.length - 1) {
-                const nextGroupId = state.rootGroupIds[i + 1];
-                const nextGroup = getGroupData(nextGroupId);
-                const nextHasDeleted = nextGroup && nextGroup.indices.some(idx => state.segmentsToRemove.has(idx));
-                if (nextGroup && !nextHasDeleted) {
-                    targetGroupId = nextGroupId;
-                    direction = 'next';
+            // 向前扫描寻找长段落
+            let prevCandidate = null;
+            for (let j = i - 1; j >= 0; j--) {
+                const candGroupId = state.rootGroupIds[j];
+                const candGroup = getGroupData(candGroupId);
+                if (!candGroup) continue;
+                const candHasDeleted = candGroup.indices.some(idx => state.segmentsToRemove.has(idx));
+                if (candHasDeleted) continue;
+                // 检查长度是否达标
+                if (totalLength(candGroup) >= shortThreshold) {
+                    prevCandidate = {
+                        groupId: candGroupId,
+                        length: totalLength(candGroup)
+                    };
+                    break;
+                }
+                // 如果遇到短段落，继续扫描（跳过）
+            }
+            
+            // 向后扫描寻找长段落
+            let nextCandidate = null;
+            for (let j = i + 1; j < state.rootGroupIds.length; j++) {
+                const candGroupId = state.rootGroupIds[j];
+                const candGroup = getGroupData(candGroupId);
+                if (!candGroup) continue;
+                const candHasDeleted = candGroup.indices.some(idx => state.segmentsToRemove.has(idx));
+                if (candHasDeleted) continue;
+                if (totalLength(candGroup) >= shortThreshold) {
+                    nextCandidate = {
+                        groupId: candGroupId,
+                        length: totalLength(candGroup)
+                    };
+                    break;
                 }
             }
-            // 如果没有下一组，考虑上一组
-            if (targetGroupId === null && i > 0) {
-                const prevGroupId = state.rootGroupIds[i - 1];
-                const prevGroup = getGroupData(prevGroupId);
-                const prevHasDeleted = prevGroup && prevGroup.indices.some(idx => state.segmentsToRemove.has(idx));
-                if (prevGroup && !prevHasDeleted) {
-                    targetGroupId = prevGroupId;
+            
+            // 选择较短的相邻段落作为目标
+            if (prevCandidate && nextCandidate) {
+                if (prevCandidate.length <= nextCandidate.length) {
+                    targetGroupId = prevCandidate.groupId;
                     direction = 'prev';
+                } else {
+                    targetGroupId = nextCandidate.groupId;
+                    direction = 'next';
                 }
+            } else if (prevCandidate) {
+                targetGroupId = prevCandidate.groupId;
+                direction = 'prev';
+            } else if (nextCandidate) {
+                targetGroupId = nextCandidate.groupId;
+                direction = 'next';
             }
 
             if (targetGroupId !== null) {
@@ -265,6 +302,15 @@ function renderPreviewGroups() {
         buttonContainer.style.flexWrap = 'wrap';
         buttonContainer.style.gap = '8px';
 
+        // 自动合并建议文本提示（如果是短段落建议合并）
+        if (candidateMap.has(groupId)) {
+            const candidate = candidateMap.get(groupId);
+            const suggestionText = document.createElement('span');
+            suggestionText.className = 'auto-merge-suggestion';
+            suggestionText.textContent = candidate.direction === 'next' ? '建议合并到下一段' : '建议合并到上一段';
+            buttonContainer.appendChild(suggestionText);
+        }
+
         // 与下一组合并按钮（如果不是最后一个且下一组未被删除）
         if (i < state.rootGroupIds.length - 1) {
             const nextGroupId = state.rootGroupIds[i + 1];
@@ -296,16 +342,6 @@ function renderPreviewGroups() {
             deleteSegment(group.indices[0], segmentDiv);
         };
         buttonContainer.appendChild(deleteBtn);
-
-        // 自动合并建议按钮（如果是短段落建议合并）
-        if (candidateMap.has(groupId)) {
-            const candidate = candidateMap.get(groupId);
-            const autoMergeBtn = document.createElement('button');
-            autoMergeBtn.className = 'auto-merge-btn';
-            autoMergeBtn.textContent = candidate.direction === 'next' ? '自动合并到下一段' : '自动合并到上一段';
-            autoMergeBtn.onclick = () => handleAutoMergeClick(groupId, candidate.targetGroupId);
-            buttonContainer.appendChild(autoMergeBtn);
-        }
 
         headerDiv.appendChild(buttonContainer);
         segmentDiv.appendChild(headerDiv);
